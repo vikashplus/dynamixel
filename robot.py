@@ -47,7 +47,7 @@ ESC_ASCII_VALUE             = 0x1b
 COMM_SUCCESS                = 0                             # Communication Success result value
 COMM_TX_FAIL                = -1001                         # Communication Tx Failed
 
-
+# hey this is the right branch right?
 
 class robot():
     def __init__(self):
@@ -99,7 +99,7 @@ class robot():
             quit('error with ADDR_MX_TORQUE_ENABLE')
 
 
-    def get_pos(self):
+    def get_pos(self, RAW):
         # Read present position
         dxl_present_position = dynamixel.read2ByteTxRx(self.port_num, PROTOCOL_VERSION, DXL_ID, ADDR_MX_PRESENT_POSITION)
         if (not self.okay()):
