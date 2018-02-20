@@ -4,6 +4,7 @@ os.sys.path.append('../dynamixel_functions_py')             # Path setting
 import dynamixel_functions as dynamixel                     # Uses Dynamixel SDK library
 
 # os.system("sudo chmod a+rw /dev/ttyUSB0")
+##
 
 # Control table address
 ADDR_MX_TORQUE_ENABLE       = 24                            # Control table address is different in Dynamixel model
