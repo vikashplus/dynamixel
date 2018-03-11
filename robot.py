@@ -3,7 +3,6 @@ import time
 os.sys.path.append('../dynamixel_functions_py')             # Path setting
 import dynamixel_functions as dynamixel                     # Uses Dynamixel SDK library
 
-# os.system("sudo chmod a+rw /dev/ttyUSB0")
 
 # Control table address
 ADDR_MX_TORQUE_ENABLE       = 24                            # Control table address is different in Dynamixel model
@@ -27,10 +26,9 @@ PROTOCOL_VERSION            = 1                             # See which protocol
 
 # Default setting
 MX12                        = 1
-MX28                        = 1
-MX64                        = 2
+MX28                        = 2
+MX64                        = 3
 
-DXL_ID                      = MX12                          # Dynamixel ID:: (MX28:1), (MX64:2), (MX12W:4)
 BAUDRATE                    = 1000000
 DEVICENAME                  = "/dev/ttyUSB0".encode('utf-8')# Check which port is being used on your controller
                                                             # ex) Windows: "COM1"   Linux: "/dev/ttyUSB0" Mac: "/dev/tty.usbserial-*"
@@ -65,7 +63,12 @@ class robot():
         if dynamixel.openPort(self.port_num):
             print("Succeeded to open the port!")
         else:
-            quit("Failed to open the port!")
+            print("Failed to open the port. Editing permissions and trying again")
+            os.system("sudo chmod a+rw /dev/ttyUSB0")
+            if dynamixel.openPort(self.port_num):
+                print("Succeeded to open the port!")
+            else:
+                quit("Failed to open the port!")
 
         # Set port baudrate
         if dynamixel.setBaudRate(self.port_num, BAUDRATE):
@@ -101,9 +104,10 @@ class robot():
 
 
     def get_pos(self, motor_id):
+        dxl_present_position = []
         # Read present position
         for dxl_id in motor_id:
-            dxl_present_position = dynamixel.read2ByteTxRx(self.port_num, PROTOCOL_VERSION, dxl_id, ADDR_MX_PRESENT_POSITION)
+            dxl_present_position.append(dynamixel.read2ByteTxRx(self.port_num, PROTOCOL_VERSION, dxl_id, ADDR_MX_PRESENT_POSITION))
         if (not self.okay()):
             self.close(motor_id)
             quit('error getting ADDR_MX_PRESENT_POSITION')
@@ -111,9 +115,10 @@ class robot():
 
 
     def get_vel(self, motor_id):
+        dxl_present_velocity = []
         # Read present position
         for dxl_id in motor_id:
-            dxl_present_velocity = dynamixel.read2ByteTxRx(self.port_num, PROTOCOL_VERSION, dxl_id, ADDR_MX_PRESENT_VELOCITY)
+            dxl_present_velocity.append(dynamixel.read2ByteTxRx(self.port_num, PROTOCOL_VERSION, dxl_id, ADDR_MX_PRESENT_VELOCITY))
         if (not self.okay()):
             self.close(motor_id)
             quit('error getting ADDR_MX_PRESENT_VELOCITY')
@@ -178,19 +183,19 @@ if __name__ == '__main__':
     dxl_goal_position = [DXL_MINIMUM_POSITION_VALUE, DXL_MAXIMUM_POSITION_VALUE]         # Goal position
     index = 0
     
-    dxl_id =  [DXL_ID]
-    dy = robot(dxl_id)
+    dxl_ids =  [MX12, MX28]
+    dy = robot(dxl_ids)
 
-    if (DXL_ID == MX12):
-        dy.engage_motor(dxl_id, False)
-        input("Motor disengaged. Press enter and apply external forces")
-        for i in range(100):
-            dxl_present_position = dy.get_pos(dxl_id)
-            dxl_present_velocity = dy.get_vel(dxl_id)
-            print("[ID:%03d] [cnt:%03d]  Pos:%03d, Vel:%03d" % (dxl_id[0], i, dxl_present_position, dxl_present_velocity))
-        dy.engage_motor(dxl_id, True)
-        dy.set_max_vel(dxl_id, 60)
-        print("Motor engaged")
+    dy.engage_motor(dxl_ids, False)
+    input("Motor disengaged. Press enter and apply external forces")
+    for i in range(100):
+        dxl_present_position = dy.get_pos(dxl_ids)
+        dxl_present_velocity = dy.get_vel(dxl_ids)
+        for j in range(len(dxl_ids)):
+            print("cnt:%03d, dxl_id:%01d ==> Pos:%04d, Vel:%04d" % (i, dxl_ids[j], dxl_present_position[j], dxl_present_velocity[j]))
+    dy.engage_motor(dxl_ids, True)
+    dy.set_max_vel(dxl_ids, 60)
+    print("Motor engaged")
 
     """
     # Test torque mode =============================
@@ -250,4 +255,5 @@ if __name__ == '__main__':
             index = 0
     """
     # Close connection and exit
-    dy.close(dxl_id)
+    dy.close(dxl_ids)
+    print('successful exit')
