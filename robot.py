@@ -26,7 +26,7 @@ DXL_MAX_CCW_TORQUE_VALUE    = 1023
 PROTOCOL_VERSION            = 1                             # See which protocol version is used in the Dynamixel
 
 # Default setting
-MX12                        = 4
+MX12                        = 1
 MX28                        = 1
 MX64                        = 2
 
@@ -49,7 +49,8 @@ COMM_TX_FAIL                = -1001                         # Communication Tx F
 
 
 class robot():
-    def __init__(self):
+    def __init__(self, motor_id):
+
         # default mode 
         self.ctrl_mode = TORQUE_DISABLE
 
@@ -73,7 +74,7 @@ class robot():
             quit("Failed to change the baudrate!")
 
         # Enable Dynamixel Torque
-        self.engage_motor(True)
+        self.engage_motor(motor_id, True)
 
         print("Dynamixel has been successfully connected")
 
@@ -92,73 +93,80 @@ class robot():
 
 
     # Engage/ Disengae the motors. enable = True/ False
-    def engage_motor(self, enable):
-        dynamixel.write1ByteTxRx(self.port_num, PROTOCOL_VERSION, DXL_ID, ADDR_MX_TORQUE_ENABLE, enable)
+    def engage_motor(self, motor_id, enable):
+        for dxl_id in motor_id:
+            dynamixel.write1ByteTxRx(self.port_num, PROTOCOL_VERSION, dxl_id, ADDR_MX_TORQUE_ENABLE, enable)
         if (not self.okay()):
             quit('error with ADDR_MX_TORQUE_ENABLE')
 
 
-    def get_pos(self):
+    def get_pos(self, motor_id):
         # Read present position
-        dxl_present_position = dynamixel.read2ByteTxRx(self.port_num, PROTOCOL_VERSION, DXL_ID, ADDR_MX_PRESENT_POSITION)
+        for dxl_id in motor_id:
+            dxl_present_position = dynamixel.read2ByteTxRx(self.port_num, PROTOCOL_VERSION, dxl_id, ADDR_MX_PRESENT_POSITION)
         if (not self.okay()):
-            self.close()
+            self.close(motor_id)
             quit('error getting ADDR_MX_PRESENT_POSITION')
         return dxl_present_position
 
 
-    def get_vel(self):
+    def get_vel(self, motor_id):
         # Read present position
-        dxl_present_velocity = dynamixel.read2ByteTxRx(self.port_num, PROTOCOL_VERSION, DXL_ID, ADDR_MX_PRESENT_VELOCITY)
+        for dxl_id in motor_id:
+            dxl_present_velocity = dynamixel.read2ByteTxRx(self.port_num, PROTOCOL_VERSION, dxl_id, ADDR_MX_PRESENT_VELOCITY)
         if (not self.okay()):
-            self.close()
+            self.close(motor_id)
             quit('error getting ADDR_MX_PRESENT_VELOCITY')
         return dxl_present_velocity
 
 
-    def set_des_pos(self, des_pos):
+    def set_des_pos(self, motor_id, des_pos):
         # if in torque mode, activate position control mode
         if(self.ctrl_mode == TORQUE_ENABLE):
-            print("booyeah")
-            dynamixel.write1ByteTxRx(self.port_num, PROTOCOL_VERSION, DXL_ID, ADDR_MX_TORQUE_CONTROL_MODE, TORQUE_DISABLE)
+            for dxl_id in motor_id:
+                dynamixel.write1ByteTxRx(self.port_num, PROTOCOL_VERSION, dxl_id, ADDR_MX_TORQUE_CONTROL_MODE, TORQUE_DISABLE)
             if (not self.okay()):
-                self.close()
+                self.close(motor_id)
                 quit('error disabling ADDR_MX_TORQUE_CONTROL_MODE')
             self.ctrl_mode = TORQUE_DISABLE
 
         # Write goal position
-        dynamixel.write2ByteTxRx(self.port_num, PROTOCOL_VERSION, DXL_ID, ADDR_MX_GOAL_POSITION, des_pos)
+        for dxl_id in motor_id:
+            dynamixel.write2ByteTxRx(self.port_num, PROTOCOL_VERSION, dxl_id, ADDR_MX_GOAL_POSITION, des_pos)
         if (not self.okay()):
-            self.close()
+            self.close(motor_id)
             quit('error setting ADDR_MX_GOAL_POSITION')
 
 
-    def set_des_torque(self, des_tor):
+    def set_des_torque(self, motor_id, des_tor):
         # If in position mode, activate torque mode
         if(self.ctrl_mode == TORQUE_DISABLE):
-            dynamixel.write1ByteTxRx(self.port_num, PROTOCOL_VERSION, DXL_ID, ADDR_MX_TORQUE_CONTROL_MODE, TORQUE_ENABLE)
+            for dxl_id in motor_id:
+                dynamixel.write1ByteTxRx(self.port_num, PROTOCOL_VERSION, dxl_id, ADDR_MX_TORQUE_CONTROL_MODE, TORQUE_ENABLE)
             if (not self.okay()):
-                self.close()
+                self.close(motor_id)
                 quit('error enabling ADDR_MX_TORQUE_CONTROL_MODE')
             self.ctrl_mode = TORQUE_ENABLE
 
         # Write goal position
-        dynamixel.write2ByteTxRx(self.port_num, PROTOCOL_VERSION, DXL_ID, ADDR_MX_GOAL_TORQUE, des_tor)
+        for id in motor_id:
+            dynamixel.write2ByteTxRx(self.port_num, PROTOCOL_VERSION, dxl_id, ADDR_MX_GOAL_TORQUE, des_tor)
         if (not self.okay()):
-            self.close()
+            self.close(motor_id)
             quit('error setting ADDR_MX_GOAL_TORQUE')
 
 
-    def set_max_vel(self, max_vel):
-        dynamixel.write2ByteTxRx(self.port_num, PROTOCOL_VERSION, DXL_ID, ADDR_MX_MAX_VELOCITY, max_vel)
+    def set_max_vel(self, motor_id, max_vel):
+        for dxl_id in motor_id:
+            dynamixel.write2ByteTxRx(self.port_num, PROTOCOL_VERSION, dxl_id, ADDR_MX_MAX_VELOCITY, max_vel)
         if (not self.okay()):
-            self.close()
+            self.close(motor_id)
             quit('error setting ADDR_MX_MAX_VELOCITY')
 
 
-    def close(self):
+    def close(self, motor_id):
         # Disengage Dynamixels
-        self.engage_motor(False)
+        self.engage_motor(motor_id, False)
 
         # Close port
         dynamixel.closePort(self.port_num)
@@ -170,20 +178,21 @@ if __name__ == '__main__':
     dxl_goal_position = [DXL_MINIMUM_POSITION_VALUE, DXL_MAXIMUM_POSITION_VALUE]         # Goal position
     index = 0
     
-    dy = robot()
+    dxl_id =  [DXL_ID]
+    dy = robot(dxl_id)
 
     if (DXL_ID == MX12):
-        dy.engage_motor(False)
+        dy.engage_motor(dxl_id, False)
         input("Motor disengaged. Press enter and apply external forces")
         for i in range(100):
-            dxl_present_position = dy.get_pos()
-            dxl_present_velocity = dy.get_vel()
-            print("[ID:%03d] [cnt:%03d]  Pos:%03d, Vel:%03d" % (DXL_ID, i, dxl_present_position, dxl_present_velocity))
-        dy.engage_motor(True)
-        dy.set_max_vel(60)
+            dxl_present_position = dy.get_pos(dxl_id)
+            dxl_present_velocity = dy.get_vel(dxl_id)
+            print("[ID:%03d] [cnt:%03d]  Pos:%03d, Vel:%03d" % (dxl_id[0], i, dxl_present_position, dxl_present_velocity))
+        dy.engage_motor(dxl_id, True)
+        dy.set_max_vel(dxl_id, 60)
         print("Motor engaged")
 
-    
+    """
     # Test torque mode =============================
     if(DXL_ID == MX64):
         print("Zero Torque")
@@ -239,6 +248,6 @@ if __name__ == '__main__':
             index = 1
         else:
             index = 0
-
+    """
     # Close connection and exit
-    dy.close()
+    dy.close(dxl_id)
