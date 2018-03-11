@@ -26,7 +26,7 @@ DXL_MAX_CCW_TORQUE_VALUE    = 1023
 PROTOCOL_VERSION            = 1                             # See which protocol version is used in the Dynamixel
 
 # Default setting
-MX12                        = 4
+MX12                        = 1
 MX28                        = 1
 MX64                        = 2
 
