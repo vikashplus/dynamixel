@@ -30,7 +30,7 @@ MX28                        = 2
 MX64                        = 3
 
 BAUDRATE                    = 1000000
-DEVICENAME                  = "/dev/ttyUSB0".encode('utf-8')# Check which port is being used on your controller
+DEVICENAME                  = "/dev/ttyACM0".encode('utf-8')# Check which port is being used on your controller
                                                             # ex) Windows: "COM1"   Linux: "/dev/ttyUSB0" Mac: "/dev/tty.usbserial-*"
 
 TORQUE_ENABLE               = 1                             # Value for enabling the torque
@@ -63,12 +63,13 @@ class robot():
         if dynamixel.openPort(self.port_num):
             print("Succeeded to open the port!")
         else:
-            print("Failed to open the port. Editing permissions and trying again")
-            os.system("sudo chmod a+rw /dev/ttyUSB0")
+            print("Failed to open the port")
+            os.system("sudo chmod a+rw /dev/ttyACM0")
+            print("Editing permissions and trying again")
             if dynamixel.openPort(self.port_num):
                 print("Succeeded to open the port!")
             else:
-                quit("Failed to open the port!")
+                quit("Failed to open the port! Run following command and try again.\nsudo chmod a+rw /dev/ttyACM0")
 
         # Set port baudrate
         if dynamixel.setBaudRate(self.port_num, BAUDRATE):
@@ -154,7 +155,7 @@ class robot():
             self.ctrl_mode = TORQUE_ENABLE
 
         # Write goal position
-        for id in motor_id:
+        for dxl_id in motor_id:
             dynamixel.write2ByteTxRx(self.port_num, PROTOCOL_VERSION, dxl_id, ADDR_MX_GOAL_TORQUE, des_tor)
         if (not self.okay()):
             self.close(motor_id)
@@ -197,33 +198,34 @@ if __name__ == '__main__':
     dy.set_max_vel(dxl_ids, 60)
     print("Motor engaged")
 
-    """
     # Test torque mode =============================
-    if(DXL_ID == MX64):
+    if(0): #only for MX64s
         print("Zero Torque")
-        dy.set_des_torque(0)
+        dy.set_des_torque(dxl_ids, 0)
         time.sleep(1)
         
 
         print("Max CCW Torque")
-        dy.set_des_torque(DXL_MAX_CCW_TORQUE_VALUE)
+        dy.set_des_torque(dxl_ids, DXL_MAX_CCW_TORQUE_VALUE)
         for i in range(50):
-            dxl_present_position = dy.get_pos()
-            print("[ID:%03d] [cnt:%03d]  PresPos:%03d" % (DXL_ID, i, dxl_present_position))
+            dxl_present_position = dy.get_pos(dxl_ids)
+            for j in range(len(dxl_ids)):
+                print("cnt:%03d, dxl_id:%01d ==> Pos:%04d, Vel:%04d" % (i, dxl_ids[j], dxl_present_position[j], dxl_present_velocity[j]))
         
         print("Zero Torque")
-        dy.set_des_torque(0)
+        dy.set_des_torque(dxl_ids, 0)
         time.sleep(1)
 
         print("Max CW Torque")
-        dy.set_des_torque(DXL_MAX_CW_TORQUE_VALUE)
+        dy.set_des_torque(dxl_ids, DXL_MAX_CW_TORQUE_VALUE)
         for i in range(50):
-            dxl_present_position = dy.get_pos()
-            print("[ID:%03d] [cnt:%03d]  PresPos:%03d" % (DXL_ID, i, dxl_present_position))
+            dxl_present_position = dy.get_pos(dxl_ids)
+            for j in range(len(dxl_ids)):
+                print("cnt:%03d, dxl_id:%01d ==> Pos:%04d, Vel:%04d" % (i, dxl_ids[j], dxl_present_position[j], dxl_present_velocity[j]))
       
         
         print("Zero Torque")
-        dy.set_des_torque(0)
+        dy.set_des_torque(dxl_ids, 0)
         time.sleep(1)
 
 
@@ -236,16 +238,18 @@ if __name__ == '__main__':
             break
 
         # set goal position
-        dy.set_des_pos(dxl_goal_position[index])
+        dy.set_des_pos(dxl_ids, dxl_goal_position[index])
 
 
         # wait and read sensors
         while 1:
-            dxl_present_position = dy.get_pos()
-            dxl_present_velocity = dy.get_vel()
-            print("[ID:%03d] [cnt:%03d] GoalPos:%03d, Pos:%03d, Vel:%03d" % (DXL_ID, i,  dxl_goal_position[index], dxl_present_position, dxl_present_velocity))
+            dxl_present_position = dy.get_pos(dxl_ids)
+            dxl_present_velocity = dy.get_vel(dxl_ids)
+            for j in range(len(dxl_ids)):
+                print("cnt:%03d, dxl_id:%01d ==> GoalPos:%04d, Pos:%04d, Vel:%04d" % (i, dxl_ids[j], dxl_goal_position[index], dxl_present_position[j], dxl_present_velocity[j]))
+
             cnt = cnt + 1
-            if not (abs(dxl_goal_position[index] - dxl_present_position) > DXL_MOVING_STATUS_THRESHOLD):
+            if not (abs(dxl_goal_position[index] - dxl_present_position[0]) > DXL_MOVING_STATUS_THRESHOLD): # checking only the first motor
                 break
 
         # Change goal position
@@ -253,7 +257,7 @@ if __name__ == '__main__':
             index = 1
         else:
             index = 0
-    """
+
     # Close connection and exit
     dy.close(dxl_ids)
     print('successful exit')
