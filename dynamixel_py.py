@@ -106,8 +106,8 @@ class dxl():
     def engage_motor(self, motor_id, enable):
         for dxl_id in motor_id:
             dynamixel.write1ByteTxRx(self.port_num, PROTOCOL_VERSION, dxl_id, ADDR_MX_TORQUE_ENABLE, enable)
-        if (not self.okay()):
-            quit('error with ADDR_MX_TORQUE_ENABLE')
+            if (not self.okay()):
+                quit('dxl%d: Error with ADDR_MX_TORQUE_ENABLE'%dxl_id)
 
     # Returns pos in radians
     def get_pos(self, motor_id):
@@ -178,9 +178,9 @@ class dxl():
     def set_max_vel(self, motor_id, max_vel):
         for dxl_id in motor_id:
             dynamixel.write2ByteTxRx(self.port_num, PROTOCOL_VERSION, dxl_id, ADDR_MX_MAX_VELOCITY, max_vel)
-        if (not self.okay()):
-            self.close(motor_id)
-            quit('error setting ADDR_MX_MAX_VELOCITY')
+            if (not self.okay()):
+                self.close(motor_id)
+                quit('error setting ADDR_MX_MAX_VELOCITY')
 
 
     def close(self, motor_id):
@@ -199,18 +199,18 @@ if __name__ == '__main__':
     dxl_goal_position = [DXL_MINIMUM_POSITION_VALUE*POS_SCALE, DXL_MAXIMUM_POSITION_VALUE*POS_SCALE]         # Goal position
     index = 0
     
-    dxl_ids =  [MX12, MX28]
+    dxl_ids =  [2, 4]
     dy = dxl(dxl_ids)
 
     dy.engage_motor(dxl_ids, False)
     input("Motor disengaged. Press enter and apply external forces")
-    for i in range(10000):
+    for i in range(1000):
         dxl_present_position = dy.get_pos(dxl_ids)
         dxl_present_velocity = dy.get_vel(dxl_ids)
         for j in range(len(dxl_ids)):
             print("cnt:%03d, dxl_id:%01d ==> Pos:%2.2f, Vel:%1.3f" % (i, dxl_ids[j], dxl_present_position[j], dxl_present_velocity[j]))
     dy.engage_motor(dxl_ids, True)
-    dy.set_max_vel(dxl_ids, 60)
+    # dy.set_max_vel(dxl_ids, 60)
     print("Motor engaged")
 
     # Test torque mode =============================
