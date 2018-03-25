@@ -9,11 +9,13 @@ ADDR_MX_TORQUE_ENABLE       = 24                            # Control table addr
 ADDR_MX_GOAL_POSITION       = 30
 ADDR_MX_PRESENT_POSITION    = 36
 ADDR_MX_PRESENT_VELOCITY    = 38
+ADDR_MX_PRESENT_POS_VEL     = 36                            # Trick to get position and velocity at once
 ADDR_MX_MAX_VELOCITY        = 32
 
 # Data Byte Length
 LEN_MX_PRESENT_POSITION     = 2
 LEN_MX_PRESENT_VELOCITY     = 2
+LEN_MX_PRESENT_POS_VEL      = 4
 LEN_MX_GOAL_POSITION        = 2
 
 # torque control mode options
@@ -113,6 +115,14 @@ class dxl():
                 print("[ID:%03d] groupBulkRead addparam_vel failed" % (m_id))
                 quit()
 
+        # positions and velocities
+        self.group_pos_vel = dynamixel.groupBulkRead(self.port_num, PROTOCOL_VERSION)
+        for m_id in motor_id:
+            dxl_addparam_result = ctypes.c_ubyte(dynamixel.groupBulkReadAddParam(self.group_pos_vel, m_id, ADDR_MX_PRESENT_POS_VEL, LEN_MX_PRESENT_POS_VEL)).value
+            if dxl_addparam_result != 1:
+                print("[ID:%03d] groupBulkRead addparam_posfailed" % (m_id))
+                quit()
+
         print("Dynamixel has been successfully connected")
 
 
@@ -136,6 +146,35 @@ class dxl():
             if (not self.okay()):
                 quit('dxl%d: Error with ADDR_MX_TORQUE_ENABLE'%dxl_id)
 
+
+    # Returns pos in radians and velocity in radian/ sec
+    def get_pos_vel(self, motor_id):
+        dxl_present_position = []
+        dxl_present_velocity = []
+
+        # Bulkread present positions
+        dynamixel.groupBulkReadTxRxPacket(self.group_pos_vel)
+
+        # Retrieve data
+        for dxl_id in motor_id:
+            # Get present position value
+            dxl_getdata_result = ctypes.c_ubyte(dynamixel.groupBulkReadIsAvailable(self.group_pos_vel, dxl_id, ADDR_MX_PRESENT_POS_VEL, LEN_MX_PRESENT_POS_VEL)).value
+            if dxl_getdata_result != 1:
+                print("[ID:%03d] groupBulkRead get_pos_vel failed" % (dxl_id))
+                dxl_present_position.append(0)
+                dxl_present_velocity.append(0)
+                quit()
+            else:
+                dxl_present_position.append(dynamixel.groupBulkReadGetData(self.group_pos_vel, dxl_id, ADDR_MX_PRESENT_POSITION, LEN_MX_PRESENT_POSITION))
+                dxl_present_velocity.append(dynamixel.groupBulkReadGetData(self.group_pos_vel, dxl_id, ADDR_MX_PRESENT_VELOCITY, LEN_MX_PRESENT_VELOCITY))
+
+        dxl_present_velocity = np.array(dxl_present_velocity)
+        for i in range(len(dxl_present_velocity)):
+            if(dxl_present_velocity[i]>=1024):
+                dxl_present_velocity[i] = -1.*(dxl_present_velocity[i] - 1024)
+        return POS_SCALE*np.array(dxl_present_position), VEL_SCALE*np.array(dxl_present_velocity)
+
+
     # Returns pos in radians
     def get_pos(self, motor_id):
         dxl_present_position = []
@@ -150,11 +189,12 @@ class dxl():
             if dxl_getdata_result != 1:
                 print("[ID:%03d] groupBulkRead pos_getdata failed" % (dxl_id))
                 dxl_present_position.append(0)
-                # quit()
+                quit()
             else:
                 dxl_present_position.append(dynamixel.groupBulkReadGetData(self.group_pos, dxl_id, ADDR_MX_PRESENT_POSITION, LEN_MX_PRESENT_POSITION))
 
         return POS_SCALE*np.array(dxl_present_position)
+
 
     # Returns vel in radians/sec
     def get_vel(self, motor_id):
@@ -167,7 +207,7 @@ class dxl():
             if dxl_getdata_result != 1:
                 print("[ID:%03d] groupBulkRead vel_getdata failed" % (dxl_id))
                 dxl_present_velocity.append(0)
-                # quit()
+                quit()
             else:
                 dxl_present_velocity.append(dynamixel.groupBulkReadGetData(self.group_vel, dxl_id, ADDR_MX_PRESENT_VELOCITY, LEN_MX_PRESENT_VELOCITY))
 
@@ -191,6 +231,7 @@ class dxl():
             quit('error getting ADDR_MX_PRESENT_POSITION')
         return POS_SCALE*np.array(dxl_present_position)
 
+
     # Returns vel in radians/sec
     def getIndividual_vel(self, motor_id):
         dxl_present_velocity = []
@@ -209,6 +250,7 @@ class dxl():
 
         return VEL_SCALE*dxl_present_velocity
 
+
     # Expects des_pos in radians
     def setIndividual_des_pos(self, motor_id, des_pos_inRadians):
         # if in torque mode, activate position control mode
@@ -226,6 +268,7 @@ class dxl():
         if (not self.okay()):
             self.close(motor_id)
             quit('error setting ADDR_MX_GOAL_POSITION')
+
 
     # Expects des_pos in radians
     def set_des_pos(self, motor_id, des_pos_inRadians):
@@ -257,7 +300,7 @@ class dxl():
         dynamixel.groupSyncWriteClearParam(self.group_desPos)
 
 
-
+    # Set desired torques, only for MX64
     def set_des_torque(self, motor_id, des_tor):
         # If in position mode, activate torque mode
         if(self.ctrl_mode == TORQUE_DISABLE):
@@ -287,6 +330,7 @@ class dxl():
         dynamixel.groupSyncWriteClearParam(self.group_desTor)
 
 
+    # Set desired torques, only for MX64
     def setIndividual_des_torque(self, motor_id, des_tor):
         # If in position mode, activate torque mode
         if(self.ctrl_mode == TORQUE_DISABLE):
@@ -305,6 +349,7 @@ class dxl():
             quit('error setting ADDR_MX_GOAL_TORQUE')
 
 
+    # Set maximum velocity
     def set_max_vel(self, motor_id, max_vel):
         for dxl_id in motor_id:
             dynamixel.write2ByteTxRx(self.port_num, PROTOCOL_VERSION, dxl_id, ADDR_MX_MAX_VELOCITY, max_vel)
@@ -312,7 +357,7 @@ class dxl():
                 self.close(motor_id)
                 quit('error setting ADDR_MX_MAX_VELOCITY')
 
-
+    # Close connection
     def close(self, motor_id):
         # Disengage Dynamixels
         self.engage_motor(motor_id, False)
@@ -337,25 +382,38 @@ if __name__ == '__main__':
     print("Testing timings ----------------------------")
     t_s = time.time()
     for i in range(cnt):
+        dxl_present_position, dxl_present_velocity = dy.get_pos_vel(dxl_ids)
+    t_e = time.time()
+    print("Bulk [pos+vel] read takes:\t\t %0.4f sec **BEST**" % ((t_e-t_s)/float(cnt)))
+
+    t_s = time.time()
+    for i in range(cnt):
         dxl_present_position = dy.get_pos(dxl_ids)
         dxl_present_velocity = dy.get_vel(dxl_ids)
     t_e = time.time()
-    print("Bulk read takes:\t\t %0.4f sec" % ((t_e-t_s)/float(cnt)))
+    print("Bulk [pos,vel] read takes:\t\t %0.4f sec" % ((t_e-t_s)/float(cnt)))
     
     t_s = time.time()
     for i in range(cnt):
         dxl_present_position = dy.getIndividual_pos(dxl_ids)
         dxl_present_velocity = dy.getIndividual_vel(dxl_ids)
     t_e = time.time()
-    print("Individual read takes:\t\t %0.4f sec" % ((t_e-t_s)/float(cnt)))
+    print("Individual [pos,vel] read takes:\t %0.4f sec" % ((t_e-t_s)/float(cnt)))
     
+    t_s = time.time()
+    for i in range(cnt):
+        dxl_present_position, dxl_present_velocity = dy.get_pos_vel(dxl_ids)
+        dy.set_des_pos(dxl_ids, dxl_present_position)
+    t_e = time.time()
+    print("Bulk [pos+vel,ctrl] loop takes:\t\t %0.4f sec **BEST**" % ((t_e-t_s)/float(cnt)))
+
     t_s = time.time()
     for i in range(cnt):
         dxl_present_position = dy.get_pos(dxl_ids)
         dxl_present_velocity = dy.get_vel(dxl_ids)
         dy.set_des_pos(dxl_ids, dxl_present_position)
     t_e = time.time()
-    print("Bulk read-write loop takes:\t %0.4f sec" % ((t_e-t_s)/float(cnt)))
+    print("Bulk [pos,vel,ctrl] loop takes:\t\t %0.4f sec" % ((t_e-t_s)/float(cnt)))
 
     t_s = time.time()
     for i in range(cnt):
@@ -363,7 +421,7 @@ if __name__ == '__main__':
         dxl_present_velocity = dy.getIndividual_vel(dxl_ids)
         dy.setIndividual_des_pos(dxl_ids, dxl_present_position)
     t_e = time.time()
-    print("Individual read-write takes:\t %0.4f sec" % ((t_e-t_s)/float(cnt)))
+    print("Individual [pos,vel,ctrl] takes:\t %0.4f sec" % ((t_e-t_s)/float(cnt)))
 
 
     # Test reads ==================================
@@ -372,8 +430,7 @@ if __name__ == '__main__':
     print("Testing position and velocity --------------")
     input("Press enter and apply external forces")
     for i in range(cnt):
-        dxl_present_position = dy.get_pos(dxl_ids)
-        dxl_present_velocity = dy.get_vel(dxl_ids)
+        dxl_present_position, dxl_present_velocity = dy.get_pos_vel(dxl_ids)
         for j in range(len(dxl_ids)):
             print("cnt:%03d, dxl_id:%01d ==> Pos:%2.2f, Vel:%1.3f" % (i, dxl_ids[j], dxl_present_position[j], dxl_present_velocity[j]))
     dy.engage_motor(dxl_ids, True)
@@ -429,6 +486,7 @@ if __name__ == '__main__':
         while 1:
             dxl_present_position = dy.get_pos(dxl_ids)
             dxl_present_velocity = dy.get_vel(dxl_ids)
+            
             for j in range(len(dxl_ids)):
                 print("cnt:%03d, dxl_id:%01d ==> GoalPos:%2.2f, Pos:%2.2f, Vel:%1.3f" % (cnt, dxl_ids[j], dxl_goal_position[index], dxl_present_position[j], dxl_present_velocity[j]))
 
