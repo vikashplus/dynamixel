@@ -428,7 +428,7 @@ if __name__ == '__main__':
     dy.engage_motor(dxl_ids, False)
     print("Motor disengaged")
     print("Testing position and velocity --------------")
-    input("Press enter and apply external forces")
+    raw_input("Press enter and apply external forces")
     for i in range(cnt):
         dxl_present_position, dxl_present_velocity = dy.get_pos_vel(dxl_ids)
         for j in range(len(dxl_ids)):
@@ -474,7 +474,7 @@ if __name__ == '__main__':
     while 1:
         cnt = 0
         # wait for user input
-        user = input("Press ENTER to continue! (or press q+ENTER to quit!)")
+        user = raw_input("Press ENTER to continue! (or press q+ENTER to quit!)")
         if user == 'q':
             break
 
