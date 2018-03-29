@@ -270,8 +270,10 @@ class dxl():
             quit('error setting ADDR_MX_GOAL_POSITION')
 
 
-    # Expects des_pos in radians
+    # Expects des_pos in radians (0-2*pi)
     def set_des_pos(self, motor_id, des_pos_inRadians):
+
+        des_pos_inRadians = np.clip(des_pos_inRadians, 0.0, 2*np.pi)
         # if in torque mode, activate position control mode
         if(self.ctrl_mode == TORQUE_ENABLE):
             for dxl_id in motor_id:
