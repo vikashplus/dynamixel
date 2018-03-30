@@ -4,7 +4,7 @@ import numpy as np
 
 
 # Make pretty plots to show off your movements
-def plot_paths(paths, filename):
+def plot_paths(paths, filename, qpos_lims=None, qvel_lims=None, ctrl_lims=None):
     import matplotlib as mpl
     mpl.use('TkAgg')
     import matplotlib.pyplot as plt
@@ -17,20 +17,23 @@ def plot_paths(paths, filename):
         plt.plot(paths[i]['ctrl'], '-', alpha=0.3, linewidth=5.0)
         plt.title(filename)
         plt.ylabel('qpos')
-        # ax.set_ylim(-2, 2)
+        if(qpos_lims):
+            ax.set_ylim(qpos_lims[0], qpos_lims[1])
         
         ax = plt.subplot(3, 1, 2)
         plt.plot(paths[i]['qvel'], '-')
         ax.set_prop_cycle(None)
         plt.plot((paths[i]['qpos'][1:,:] - paths[i]['qpos'][:-1,:])*100,'--')
         plt.ylabel('qvel')
-        # ax.set_ylim(-6, 6)
+        if(qvel_lims):
+            ax.set_ylim(qvel_lims[0], qvel_lims[1])
 
         ax = plt.subplot(3, 1, 3)
         plt.plot(paths[i]['ctrl'], '-', alpha=0.3, linewidth=5.0)
         plt.ylabel('ctrl')
         plt.xlabel('time')
-        # ax.set_ylim(-2, 2)
+        if(ctrl_lims):
+            ax.set_ylim(ctrl_lims[0], ctrl_lims[1])
 
         plt.tight_layout()
         fn = filename+'_path'+str(i)+'.png'
@@ -104,7 +107,7 @@ if __name__ == '__main__':
     # test_update_rate(dy, dxl_ids, 1000)
 
     # Move all the joints and plot the trace
-    trace = chirp(dy, dxl_ids, 5)
+    trace = chirp(dy, dxl_ids, 2)
     plot_paths(trace, 'chirp')
 
     # Close
