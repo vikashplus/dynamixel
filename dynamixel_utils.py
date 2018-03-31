@@ -2,6 +2,7 @@ from dynamixel_py import *
 import time as t
 import numpy as np
 
+update_rate = 444
 
 # Make pretty plots to show off your movements
 def plot_paths(paths, filename, qpos_lims=None, qvel_lims=None, ctrl_lims=None):
@@ -10,26 +11,36 @@ def plot_paths(paths, filename, qpos_lims=None, qvel_lims=None, ctrl_lims=None):
     import matplotlib.pyplot as plt
 
     for i in range(len(paths)):
+
+        if('time' in paths[i].keys()):
+            time = paths[i]['time']
+        else:
+            n = len(paths[i]['qpos'])
+            time = np.linspace(0, n, n)/update_rate
+
         plt.clf()
         ax = plt.subplot(3, 1, 1)
-        plt.plot(paths[i]['qpos'], '-')
+        plt.plot(time,paths[i]['qpos'], '-')
         ax.set_prop_cycle(None)
-        plt.plot(paths[i]['ctrl'], '-', alpha=0.3, linewidth=5.0)
+        plt.plot(time, paths[i]['ctrl'], '-', alpha=0.3, linewidth=5.0)
         plt.title(filename)
         plt.ylabel('qpos')
         if(qpos_lims):
             ax.set_ylim(qpos_lims[0], qpos_lims[1])
         
         ax = plt.subplot(3, 1, 2)
-        plt.plot(paths[i]['qvel'], '-')
+        plt.plot(time,paths[i]['qvel'], '-')
         ax.set_prop_cycle(None)
-        plt.plot((paths[i]['qpos'][1:,:] - paths[i]['qpos'][:-1,:])*100,'--')
+        # import ipdb; ipdb.set_trace()
+        vel = (paths[i]['qpos'][1:,:] - paths[i]['qpos'][:-1,:])/(time[1:]-time[:-1]).reshape(-1,1)
+
+        plt.plot(time[:-1], vel, '--')
         plt.ylabel('qvel')
         if(qvel_lims):
             ax.set_ylim(qvel_lims[0], qvel_lims[1])
 
         ax = plt.subplot(3, 1, 3)
-        plt.plot(paths[i]['ctrl'], '-', alpha=0.3, linewidth=5.0)
+        plt.plot(time, paths[i]['ctrl'], '-', alpha=0.3, linewidth=5.0)
         plt.ylabel('ctrl')
         plt.xlabel('time')
         if(ctrl_lims):
@@ -42,7 +53,7 @@ def plot_paths(paths, filename, qpos_lims=None, qvel_lims=None, ctrl_lims=None):
 
 
 def chirp(dy, dxl_ids, time_horizon):
-    clk = []
+    clk =[]
     qpos=[]
     qvel=[]
     ctrl=[]
@@ -70,7 +81,7 @@ def chirp(dy, dxl_ids, time_horizon):
     # Paths
     paths =[]
     path = dict(
-        time=np.array(clk),
+        # time=np.array(clk),
         qpos=np.array(qpos),
         qvel=np.array(qvel),
         ctrl=np.array(ctrl)
@@ -91,12 +102,15 @@ def test_update_rate(dy, dxl_ids, cnt = 1000):
     t_e = time.time()
     update_rate = cnt/(t_e-t_s)
     print("Update rate of dxl %3.2f hz (%1.4f s)" % (update_rate, 1.0/update_rate))
+    return update_rate
 
 
 
 
 if __name__ == '__main__':
     
+    global update_rate
+
     print("============= dxl ==============")
     dxl_ids = [10]
     
@@ -104,7 +118,7 @@ if __name__ == '__main__':
     dy = dxl(dxl_ids)
 
     # Test update rate
-    # test_update_rate(dy, dxl_ids, 1000)
+    # update_rate = test_update_rate(dy, dxl_ids, 1000)
 
     # Move all the joints and plot the trace
     trace = chirp(dy, dxl_ids, 2)
