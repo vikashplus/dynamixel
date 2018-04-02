@@ -55,7 +55,7 @@ def plot_paths(paths, filename, qpos_lims=None, qvel_lims=None, ctrl_lims=None):
         print("path saved to " + fn)
 
 
-def chirp(dy, dxl_ids, time_horizon):
+def chirp(dy, dxl_ids, frequency=2.0, time_horizon=5.0):
     clk =[]
     qpos=[]
     qvel=[]
@@ -73,7 +73,7 @@ def chirp(dy, dxl_ids, time_horizon):
         t_n = time.time() - t_s
         
         qp, qv = dy.get_pos_vel(dxl_ids)
-        des_pos = [pos_mean + pos_scale*np.sin(4.0*np.pi*t_n)*np.cos(4.0*t_n)]*np.ones(len(dxl_ids))
+        des_pos = [pos_mean + pos_scale*np.sin(frequency*2.0*np.pi*t_n)*np.cos(frequency*2.0*t_n)]*np.ones(len(dxl_ids))
         dy.set_des_pos(dxl_ids, des_pos)
 
         clk.append(t_n)
@@ -94,7 +94,7 @@ def chirp(dy, dxl_ids, time_horizon):
     return paths
 
 
-def step(dy, dxl_ids, time_horizon):
+def step(dy, dxl_ids, frequency=1.0, time_horizon=5.0):
     clk =[]
     qpos=[]
     qvel=[]
@@ -105,14 +105,14 @@ def step(dy, dxl_ids, time_horizon):
     pos_mean = (pos_max + pos_min)/2.0
     pos_scale = (pos_max - pos_min)/2.0
     
-    print("Subjecting system to chirp signal");
+    print("Subjecting system to step signal");
     t_s = time.time()
     t_n = time.time() - t_s
     while(t_n < time_horizon):
         t_n = time.time() - t_s
         
         qp, qv = dy.get_pos_vel(dxl_ids)
-        des_pos = [pos_mean + .95*pos_scale*(2.*(int(2*t_n)%2) -1.)]*np.ones(len(dxl_ids))
+        des_pos = [pos_mean + .95*pos_scale*(2.*(int(frequency*2*t_n)%2) -1.)]*np.ones(len(dxl_ids))
         dy.set_des_pos(dxl_ids, des_pos)
 
         clk.append(t_n)
@@ -163,9 +163,9 @@ if __name__ == '__main__':
     # update_rate = test_update_rate(dy, dxl_ids, 1000)
 
     # Move all the joints and plot the trace
-    trace = chirp(dy, dxl_ids, 2)
+    trace = chirp(dy, dxl_ids, 1, 4)
     plot_paths(trace, 'chirp')
-    trace = step(dy, dxl_ids, 4)
+    trace = step(dy, dxl_ids, 1, 4)
     plot_paths(trace, 'step')
 
     # Close
