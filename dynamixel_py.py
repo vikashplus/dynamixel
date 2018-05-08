@@ -62,6 +62,8 @@ COMM_TX_FAIL                = -1001                         # Communication Tx F
 class dxl():
     def __init__(self, motor_id):
 
+        self.n_motors = len(motor_id)
+
         # default mode 
         self.ctrl_mode = TORQUE_DISABLE
 
@@ -123,6 +125,11 @@ class dxl():
                 print("[ID:%03d] groupBulkRead addparam_posfailed" % (m_id))
                 quit()
 
+        # buffers
+        self.dxl_present_position = float('nan')*np.zeros(self.n_motors)
+        self.dxl_present_velocity = float('nan')*np.zeros(self.n_motors)
+        self.dxl_last_position = float('nan')*np.zeros(self.n_motors)
+        self.dxl_last_velocity = float('nan')*np.zeros(self.n_motors)
         print("Dynamixel has been successfully connected")
 
 
@@ -148,7 +155,8 @@ class dxl():
 
 
     # Returns pos in radians and velocity in radian/ sec
-    def get_pos_vel(self, motor_id):
+    def get_pos_vel_old(self, motor_id):
+
         dxl_present_position = []
         dxl_present_velocity = []
 
@@ -156,14 +164,15 @@ class dxl():
         dynamixel.groupBulkReadTxRxPacket(self.group_pos_vel)
 
         # Retrieve data
-        for dxl_id in motor_id:
+        for i in range(self.n_motors):
+            dxl_id = motor_id[i]
             # Get present position value
             dxl_getdata_result = ctypes.c_ubyte(dynamixel.groupBulkReadIsAvailable(self.group_pos_vel, dxl_id, ADDR_MX_PRESENT_POS_VEL, LEN_MX_PRESENT_POS_VEL)).value
             if dxl_getdata_result != 1:
                 print("[ID:%03d] groupBulkRead get_pos_vel failed" % (dxl_id))
-                dxl_present_position.append(0)
-                dxl_present_velocity.append(0)
-                quit()
+                dxl_present_position.append(float('nan'))
+                dxl_present_velocity.append(float('nan'))
+                # quit()
             else:
                 dxl_present_position.append(dynamixel.groupBulkReadGetData(self.group_pos_vel, dxl_id, ADDR_MX_PRESENT_POSITION, LEN_MX_PRESENT_POSITION))
                 dxl_present_velocity.append(dynamixel.groupBulkReadGetData(self.group_pos_vel, dxl_id, ADDR_MX_PRESENT_VELOCITY, LEN_MX_PRESENT_VELOCITY))
@@ -173,6 +182,38 @@ class dxl():
             if(dxl_present_velocity[i]>=1024):
                 dxl_present_velocity[i] = -1.*(dxl_present_velocity[i] - 1024)
         return POS_SCALE*np.array(dxl_present_position), VEL_SCALE*np.array(dxl_present_velocity)
+
+    
+    # Returns pos in radians and velocity in radian/ sec
+    def get_pos_vel(self, motor_id):
+
+        # Bulkread present positions
+        dynamixel.groupBulkReadTxRxPacket(self.group_pos_vel)
+
+        # Retrieve data
+        for i in range(self.n_motors):
+            dxl_id = motor_id[i]
+            
+            # Get present position value
+            dxl_getdata_result = ctypes.c_ubyte(dynamixel.groupBulkReadIsAvailable(self.group_pos_vel, dxl_id, ADDR_MX_PRESENT_POS_VEL, LEN_MX_PRESENT_POS_VEL)).value
+            if dxl_getdata_result != 1:
+                #send last known values
+                print("[ID:%03d] groupBulkRead get_pos_vel failed. Sending last known value" % (dxl_id))
+                self.dxl_present_position[i] = self.dxl_last_position[i].copy()
+                self.dxl_present_velocity[i] = self.dxl_last_velocity[i].copy()
+            else:
+                self.dxl_last_position[i] = self.dxl_present_position[i].copy()
+                self.dxl_last_velocity[i] = self.dxl_present_velocity[i].copy()
+
+                dxl_present_position = dynamixel.groupBulkReadGetData(self.group_pos_vel, dxl_id, ADDR_MX_PRESENT_POSITION, LEN_MX_PRESENT_POSITION)
+                dxl_present_velocity = dynamixel.groupBulkReadGetData(self.group_pos_vel, dxl_id, ADDR_MX_PRESENT_VELOCITY, LEN_MX_PRESENT_VELOCITY)
+                if(dxl_present_velocity>=1024):
+                    dxl_present_velocity = -1.*(dxl_present_velocity - 1024)
+
+                self.dxl_present_position[i] = POS_SCALE*dxl_present_position
+                self.dxl_present_velocity[i] = VEL_SCALE*dxl_present_velocity
+            
+        return self.dxl_present_position.copy(), self.dxl_present_velocity.copy()
 
 
     # Returns pos in radians

@@ -1,8 +1,10 @@
 from dynamixel_py import *
 import time as t
 import numpy as np
+import scipy.io as sio
+    
+global update_rate
 
-update_rate = 444
 
 # Make pretty plots to show off your movements
 def plot_paths(paths, filename, qpos_lims=None, qvel_lims=None, ctrl_lims=None):
@@ -32,11 +34,12 @@ def plot_paths(paths, filename, qpos_lims=None, qvel_lims=None, ctrl_lims=None):
         
         # Velocities
         ax = plt.subplot(3, 1, 2)
-        plt.plot(time,paths[i]['qvel'], '-')
+        h0 = plt.plot(time,paths[i]['qvel'], '-')
         ax.set_prop_cycle(None)
         vel = (paths[i]['qpos'][1:,:] - paths[i]['qpos'][:-1,:])/(time[1:]-time[:-1]).reshape(-1,1)
-        plt.plot(time[:-1], vel, '--', alpha=0.3)
+        h1 = plt.plot(time[:-1], vel, '--', alpha=0.3)
         plt.ylabel('qvel')
+        plt.legend((h0[0], h1[0]), ('qvel', 'fd(qpos)'))
         if(qvel_lims):
             ax.set_ylim(qvel_lims[0], qvel_lims[1])
 
@@ -74,6 +77,7 @@ def chirp(dy, dxl_ids, frequency=2.0, time_horizon=5.0):
         
         qp, qv = dy.get_pos_vel(dxl_ids)
         des_pos = [pos_mean + pos_scale*np.sin(frequency*2.0*np.pi*t_n)*np.cos(frequency*2.0*t_n)]*np.ones(len(dxl_ids))
+        # print(des_pos)
         dy.set_des_pos(dxl_ids, des_pos)
 
         clk.append(t_n)
@@ -152,21 +156,33 @@ def test_update_rate(dy, dxl_ids, cnt = 1000):
 if __name__ == '__main__':
     
     global update_rate
+    update_rate = 444
 
     print("============= dxl ==============")
-    dxl_ids = [10, 12]
-    
+    # dxl_ids = [10, 11, 12]
+    # dxl_ids = [20, 21, 22]
+    # dxl_ids = [30, 31, 32]
+    # dxl_ids = [10, 11, 12, 20, 21, 22, 30, 31, 32]
+    dxl_ids = np.array([40])
     # Connect
     dy = dxl(dxl_ids)
 
+    # dy.engage_motor(dxl_ids, False)
+
+    while True:
+        dxl_present_position, dxl_present_velocity = dy.get_pos_vel(dxl_ids)
+        print(dxl_present_position)
+
     # Test update rate
-    # update_rate = test_update_rate(dy, dxl_ids, 1000)
+    update_rate = test_update_rate(dy, dxl_ids, 1000)
 
     # Move all the joints and plot the trace
     trace = chirp(dy, dxl_ids, 1, 4)
     plot_paths(trace, 'chirp')
+    sio.savemat('chirp.mat', {'trace':trace})
     trace = step(dy, dxl_ids, 1, 4)
     plot_paths(trace, 'step')
+    sio.savemat('step.mat', {'trace':trace})
 
     # Close
     dy.close(dxl_ids)
