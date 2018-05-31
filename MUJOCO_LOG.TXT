@@ -1,0 +1,15 @@
+Wed Feb 21 20:36:00 2018
+ERROR: ****** Could not initialize GLFW *******
+
+Wed Feb 21 20:59:44 2018
+ERROR: ****** Could not initialize GLFW *******
+
+Thu Mar 22 18:18:59 2018
+ERROR: ****** Could not initialize GLFW *******
+
+Thu Mar 22 18:19:11 2018
+ERROR: ****** Could not initialize GLFW *******
+
+Thu Mar 22 18:19:28 2018
+ERROR: ****** Could not initialize GLFW *******
+

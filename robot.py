@@ -1,13 +1,13 @@
 import os
 import time
-os.sys.path.append('../dynamixel_functions_py')             # Path setting
+# os.sys.path.append('../dynamixel_functions_py')             # Path setting
 import dynamixel_functions as dynamixel                     # Uses Dynamixel SDK library
 
 from api import allegro as al
 import numpy as np
 import time
 
-# os.system("sudo chmod a+rw /dev/ttyUSB0")
+os.system("sudo chmod a+rw /dev/ttyACM0")
 ##
 
 # Control table address
@@ -42,7 +42,7 @@ MX64                        = 2
 
 DXL_ID                      = MX12                          # Dynamixel ID:: (MX28:1), (MX64:2), (MX12W:4)
 BAUDRATE                    = 1000000
-DEVICENAME                  = "/dev/ttyUSB0".encode('utf-8')# Check which port is being used on your controller
+DEVICENAME                  = "/dev/ttyACM0".encode('utf-8')# Check which port is being used on your controller
                                                             # ex) Windows: "COM1"   Linux: "/dev/ttyUSB0" Mac: "/dev/tty.usbserial-*"
 
 TORQUE_ENABLE               = 1                             # Value for enabling the torque
@@ -69,14 +69,18 @@ MAX_RAW_POS_EMP             = 262128
 MAX_DEG_POS_EMP             = int(MAX_RAW_POS_EMP * POS_RESOLUTION)
 MX_MAX_GOAL_POS             = 28672
 MX_MIN_GOAL_POS             = -28672
+MAX_RAW_POS                 = 4095
 
 
 
 
 class robot():
-    def __init__(self):
+    def __init__(self, offset=0):
         # default mode 
         self.ctrl_mode = TORQUE_DISABLE
+        self.offset=offset # get_pos will return actual pos + offset
+        self.revolutions = 0
+        self.last_pos = 0
 
         # Initialize PortHandler Structs
         # Set the port path and Get methods and members of PortHandlerLinux or PortHandlerWindows
@@ -120,26 +124,49 @@ class robot():
 
     # Engage/ Disengae the motors. enable = True/ False
     def engage_motor(self, enable):
+        # import IPython
+        # IPython.embed()
         dynamixel.write1ByteTxRx(self.port_num, PROTOCOL_VERSION, DXL_ID, ADDR_MX_TORQUE_ENABLE, enable)
         if (not self.okay()):
             quit('error with ADDR_MX_TORQUE_ENABLE')
 
 
-    def get_pos(self, deg = False):
+    def get_pos(self, deg=False, raw=False):
         # Read present position
-        dxl_present_position = dynamixel.read2ByteTxRx(self.port_num, PROTOCOL_VERSION, DXL_ID, ADDR_MX_PRESENT_POSITION) 
+        dxl_present_position = dynamixel.read2ByteTxRx(self.port_num, PROTOCOL_VERSION, DXL_ID, ADDR_MX_PRESENT_POSITION)
+        if dxl_present_position - self.last_pos >= 3500:
+            self.revolutions -= 1
+        elif dxl_present_position - self.last_pos <= -3500:
+            self.revolutions += 1
+        # if abs(dxl_present_position - self.last_pos) > 4000:
+        #     self.revolutions += 1
+
+        # dxl_present_position += self.revolutions * MAX_RAW_POS
+        # print(dxl_present_position, self.last_pos)
+        self.last_pos = dxl_present_position
+
+
+
+
         if MULTI_TURN:
             dxl_present_position *= RESOLUTION_DIVIDER
         if (not self.okay()):
             self.close()
             quit('error getting ADDR_MX_PRESENT_POSITION')
 
+        if raw:
+            return dxl_present_position
+
         # convert to degrees
         if deg:
             
-            dxl_present_position = int(POS_RESOLUTION * dxl_present_position)
+            dxl_present_position *= POS_RESOLUTION
+        else:
+            dxl_present_position *= POS_RESOLUTION * np.pi/180
 
-        return dxl_present_position
+
+
+        return dxl_present_position + self.offset
 
 
     def get_vel(self, raw = False):
@@ -151,12 +178,19 @@ class robot():
         return dxl_present_velocity
 
 
-    def set_des_pos(self, des_pos, deg = False):
+    def set_des_pos(self, des_pos, deg = False, POS_THRESHOLD = 25):
         # convert from degrees to raw
         # deg: center = 180, max = 360, min = 0
 
+        des_pos -= self.offset
+        # print(des_pos)
+
         if deg:
             des_pos = int(des_pos / POS_RESOLUTION)
+        else:
+            des_pos = int(des_pos *180/np.pi / POS_RESOLUTION)
+
+        # print(des_pos)
 
 
         # if in torque mode, activate position control mode
@@ -185,12 +219,27 @@ class robot():
             des_pos = ccw_angle_limit
             print("upper position bound reached")
 
-
-        # Write goal position
         dynamixel.write2ByteTxRx(self.port_num, PROTOCOL_VERSION, DXL_ID, ADDR_MX_GOAL_POSITION, des_pos)
-        if (not self.okay()):
-            self.close()
-            quit('error setting ADDR_MX_GOAL_POSITION')
+        # Write goal position
+        curr_pos = self.get_pos(raw=True)
+        # last_pos = curr_pos + 1
+        
+
+        i = 0
+        while True:
+            if abs(curr_pos - des_pos) < POS_THRESHOLD:
+                i += 1
+            else: 
+                i = 0
+
+            if i > 500:
+                self.engage_motor(False)
+                return
+        #     dynamixel.write2ByteTxRx(self.port_num, PROTOCOL_VERSION, DXL_ID, ADDR_MX_GOAL_POSITION, des_pos)
+            # last_pos, curr_pos = curr_pos, self.get_pos(raw=True)
+            # print(curr_pos, des_pos)
+            # print(i)
+            curr_pos = self.get_pos(raw=True)
 
 
     def set_des_torque(self, des_tor):
@@ -225,135 +274,65 @@ class robot():
 
 
 
+
 if __name__ == '__main__':
     
-    dxl_goal_position = [DXL_MINIMUM_POSITION_VALUE, DXL_MAXIMUM_POSITION_VALUE]         # Goal position
-    index = 0
+    # dxl_goal_position = [DXL_MINIMUM_POSITION_VALUE, DXL_MAXIMUM_POSITION_VALUE]         # Goal position
+    # index = 0
     
-    dy = robot()
+    dy = robot(offset=0)#-np.pi)
     host = "128.208.4.243"
     al.hx_connect(host)
-    #info = al.hx_robot_info()
-    u = np.ones((16,))
+    #u = np.ones((16,))
     
-    
-    
-    
-    """
-
-    if (DXL_ID == MX12):
-        dy.engage_motor(False)
-        input("Motor disengaged. Press enter and apply external forces")
-        for i in range(100):
-            dxl_present_position = dy.get_pos()
-            dxl_present_velocity = dy.get_vel()
-            print("[ID:%03d] [cnt:%03d]  Pos:%03d, Vel:%03d" % (DXL_ID, i, dxl_present_position, dxl_present_velocity))
-        dy.engage_motor(True)
-        dy.set_max_vel(60)
-        print("Motor engaged")
-
-    
-    # Test torque mode =============================
-    if(DXL_ID == MX64):
-        print("Zero Torque")
-        dy.set_des_torque(0)
-        time.sleep(1)
-        
-
-        print("Max CCW Torque")
-        dy.set_des_torque(DXL_MAX_CCW_TORQUE_VALUE)
-        for i in range(50):
-            dxl_present_position = dy.get_pos(True)
-            print("[ID:%03d] [cnt:%03d]  PresPos:%03d" % (DXL_ID, i, dxl_present_position))
-        
-        print("Zero Torque")
-        dy.set_des_torque(0)
-        time.sleep(1)
-
-        print("Max CW Torque")
-        dy.set_des_torque(DXL_MAX_CW_TORQUE_VALUE)
-        for i in range(50):
-            dxl_present_position = dy.get_pos(True)
-            print("[ID:%03d] [cnt:%03d]  PresPos:%03d" % (DXL_ID, i, dxl_present_position))
-      
-        
-        print("Zero Torque")
-        dy.set_des_torque(0)
-        time.sleep(1)
-
-    """
-    """
-    # Test position mode =============================
-    while 1:
-        cnt = 0
-        # wait for user input
-        user = input("Press ENTER to continue! (or press q+ENTER to quit!)")
-        if user == 'q':
-            break
-
-        # set goal position
-        dy.set_des_pos(dxl_goal_position[index])
-
-
-        
-        # wait and read sensors
-        while 1:
-            dxl_present_position = dy.get_pos(True)
-            dxl_present_velocity = dy.get_vel()
-            print("[ID:%03d] [cnt:%03d] GoalPos:%03d, Pos:%03d, Vel:%03d" % (DXL_ID, i,  dxl_goal_position[index], dxl_present_position, dxl_present_velocity))
-            cnt = cnt + 1
-            if not (abs(dxl_goal_position[index] - dxl_present_position) > DXL_MOVING_STATUS_THRESHOLD):
-                break
-        
-        # Change goal position
-        if index == 0:
-            index = 1
-        else:
-            index = 0
-    """
     # Resetting
     allegro_open_hand = [-0.19234973192214966, 0.6015477776527405, 0.003994341474026442, 0.23034034669399261, -0.0756261944770813, 0.3661479651927948, -0.08956200629472733, 0.551929235458374, 0.0759812518954277, 0.4423067271709442, -0.030623283237218857, -2.9456934928894043, 0.8270061612129211, 0.8169759511947632, 0.3208787441253662, -0.24019305408000946]
 
     POS_THRESHOLD = 1                       # degrees
-    RESET_POS = 180         # degrees
+    RESET_POS = 0         # degrees
 
     dy.set_max_vel(100)
     al.hx_ctrl(allegro_open_hand, False)
     time.sleep(1)
+
+    # Reset dynamixel to 180 deg
+    deg = False
     i = 0
-    curr_pos = dy.get_pos(deg = True)
-    while abs(curr_pos - RESET_POS) > POS_THRESHOLD:
+    curr_pos = dy.get_pos(deg=deg)
+
+    dy.set_des_pos(RESET_POS)
+    # dynamixel.write2ByteTxRx(dy.port_num, PROTOCOL_VERSION, DXL_ID, ADDR_MX_GOAL_POSITION, RESET_POS)
+    # dynamixel.write1ByteTxRx(dy.port_num, PROTOCOL_VERSION, DXL_ID, ADDR_MX_TORQUE_CONTROL_MODE, TORQUE_ENABLE)
+    # time.sleep(2)
+    # dy.engage_motor(False)
+    curr_pos = dy.get_pos(deg = deg)
+    print("GOAL POS: %f, CURR POSITION: %f" %(RESET_POS / POS_RESOLUTION, curr_pos))
+    # dy.engage_motor(True)
+    # time.sleep(2)
+    # dy.set_des_pos(np.pi)
+    # curr_pos = dy.get_pos(deg = deg)
+    # print("GOAL POS: %f, CURR POSITION: %f" %(RESET_POS / POS_RESOLUTION, curr_pos))
+
+    while True:
+        
         i += 1
         if i % 50000 == 0:
-            al.hx_ctrl(allegro_open_hand, False)
-            dy.set_des_pos(RESET_POS, deg = True)
-            curr_pos = dy.get_pos(deg = True)
-            print("GOAL POS: %f, CURR POSITION: %f" %(RESET_POS / POS_RESOLUTION, curr_pos))
-    al.hx_ctrl(allegro_open_hand, False)
+            #al.hx_ctrl(allegro_open_hand, False)
+            # dy.set_des_pos(RESET_POS, deg = True)
+            curr_pos = dy.get_pos(raw=True)
+            print("GOAL POS: %f, CURR POSITION: %f, NUM REV: %i" %(RESET_POS / POS_RESOLUTION, curr_pos, dy.revolutions))
+
+
+
+    # dy.set_des_pos_helper(RESET_POS)
+    # curr_pos = dy.get_pos(deg = True)
+
+    # print("GOAL POS: %f, CURR POSITION: %f" %(RESET_POS / POS_RESOLUTION, curr_pos))
+
     print("Made it to the goal! GOAL POS: %f, CURR POSITION: %f" %(RESET_POS, dy.get_pos(deg = True)))
 
     
-
+    allegro_reset_pos = [0.2711713910102844, 1.3294055461883545, 0.4237552285194397, 0.9109761118888855, -0.21374164521694183, 0.2763196527957916, 1.2242212295532227, 0.5426090955734253, -0.36357381939888, 0.822479248046875, 1.3656209707260132, 1.132617712020874, 0.6276441812515259, 0.7996671199798584, 0.45047295093536377, 1.3058832883834839]
+    al.hx_ctrl(allegro_reset_pos, False);
     
-    #allegro_reset_pos = [0.2711713910102844, 1.3294055461883545, 0.4237552285194397, 0.9109761118888855, -0.21374164521694183, 0.2763196527957916, 1.2242212295532227, 0.5426090955734253, -0.36357381939888, 0.822479248046875, 1.3656209707260132, 1.132617712020874, 0.6276441812515259, 0.7996671199798584, 0.45047295093536377, 1.3058832883834839]
-    #al.hx_ctrl(allegro_reset_pos, False);
-    
-    """
-    TIME_THRESHOLD = 10
-    t0 = time.time()
-    
-
-    print(dynamixel.read2ByteTxRx(dy.port_num, PROTOCOL_VERSION, DXL_ID, ADDR_MX_OFFSET))
-    
-
-    dy.set_max_vel(100)
-    while time.time() - t0 < TIME_THRESHOLD:
-        
-        i += 1
-        if i % 20000 == 0:
-            #dy.set_des_pos(RESET_POS, deg = True)
-            print("GOAL POS: %f, CURR POSITION: %f" %(RESET_POS / POS_RESOLUTION, dy.get_pos(deg = False)))
-    """
-
-    # Close connection and exit
     dy.close()
