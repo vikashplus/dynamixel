@@ -7,9 +7,9 @@ from api import allegro as al
 import numpy as np
 import time
 
-os.system("sudo chmod a+rw /dev/ttyACM0")
-##
 
+##
+os.system("sudo chmod a+rw /dev/ttyACM0")
 # Control table address
 ADDR_MX_TORQUE_ENABLE       = 24                            # Control table address is different in Dynamixel model
 ADDR_MX_GOAL_POSITION       = 30
@@ -77,6 +77,9 @@ MAX_RAW_POS                 = 4095
 class robot():
     def __init__(self, offset=0):
         # default mode 
+
+
+
         self.ctrl_mode = TORQUE_DISABLE
         self.offset=offset # get_pos will return actual pos + offset
         self.revolutions = 0
@@ -131,7 +134,7 @@ class robot():
             quit('error with ADDR_MX_TORQUE_ENABLE')
 
 
-    def get_pos(self, deg=False, raw=False):
+    def get_pos(self, deg=False, raw=False, wrap=True):
         # Read present position
         dxl_present_position = dynamixel.read2ByteTxRx(self.port_num, PROTOCOL_VERSION, DXL_ID, ADDR_MX_PRESENT_POSITION)
         if dxl_present_position - self.last_pos >= 3500:
@@ -140,10 +143,12 @@ class robot():
             self.revolutions += 1
         # if abs(dxl_present_position - self.last_pos) > 4000:
         #     self.revolutions += 1
-
-        # dxl_present_position += self.revolutions * MAX_RAW_POS
-        # print(dxl_present_position, self.last_pos)
         self.last_pos = dxl_present_position
+
+        if wrap:
+            dxl_present_position += self.revolutions * MAX_RAW_POS
+        # print(dxl_present_position, self.last_pos)
+        
 
 
 
@@ -168,6 +173,9 @@ class robot():
 
         return dxl_present_position + self.offset
 
+    def set_revolutions(self, rev):
+        self.revolutions = rev
+
 
     def get_vel(self, raw = False):
         # Read present position
@@ -178,7 +186,7 @@ class robot():
         return dxl_present_velocity
 
 
-    def set_des_pos(self, des_pos, deg = False, POS_THRESHOLD = 25):
+    def set_des_pos(self, des_pos, deg = False, POS_THRESHOLD = 25, wrap=True):
         # convert from degrees to raw
         # deg: center = 180, max = 360, min = 0
 
@@ -221,7 +229,7 @@ class robot():
 
         dynamixel.write2ByteTxRx(self.port_num, PROTOCOL_VERSION, DXL_ID, ADDR_MX_GOAL_POSITION, des_pos)
         # Write goal position
-        curr_pos = self.get_pos(raw=True)
+        curr_pos = self.get_pos(raw=True, wrap=wrap)
         # last_pos = curr_pos + 1
         
 
@@ -231,7 +239,7 @@ class robot():
                 i += 1
             else: 
                 i = 0
-
+            # print(i, curr_pos, des_pos)
             if i > 500:
                 self.engage_motor(False)
                 return
@@ -239,7 +247,7 @@ class robot():
             # last_pos, curr_pos = curr_pos, self.get_pos(raw=True)
             # print(curr_pos, des_pos)
             # print(i)
-            curr_pos = self.get_pos(raw=True)
+            curr_pos = self.get_pos(raw=True, wrap=wrap)
 
 
     def set_des_torque(self, des_tor):
@@ -280,7 +288,7 @@ if __name__ == '__main__':
     # dxl_goal_position = [DXL_MINIMUM_POSITION_VALUE, DXL_MAXIMUM_POSITION_VALUE]         # Goal position
     # index = 0
     
-    dy = robot(offset=0)#-np.pi)
+    dy = robot(offset=-np.pi)
     host = "128.208.4.243"
     al.hx_connect(host)
     #u = np.ones((16,))
@@ -293,7 +301,7 @@ if __name__ == '__main__':
 
     dy.set_max_vel(100)
     al.hx_ctrl(allegro_open_hand, False)
-    time.sleep(1)
+    time.sleep(2)
 
     # Reset dynamixel to 180 deg
     deg = False
@@ -319,7 +327,7 @@ if __name__ == '__main__':
         if i % 50000 == 0:
             #al.hx_ctrl(allegro_open_hand, False)
             # dy.set_des_pos(RESET_POS, deg = True)
-            curr_pos = dy.get_pos(raw=True)
+            curr_pos = dy.get_pos(deg=deg)
             print("GOAL POS: %f, CURR POSITION: %f, NUM REV: %i" %(RESET_POS / POS_RESOLUTION, curr_pos, dy.revolutions))
 
 
