@@ -190,6 +190,7 @@ class dxl():
         # Bulkread present positions
         dynamixel.groupBulkReadTxRxPacket(self.group_pos_vel)
 
+        dxl_errored = []
         # Retrieve data
         for i in range(self.n_motors):
             dxl_id = motor_id[i]
@@ -198,7 +199,7 @@ class dxl():
             dxl_getdata_result = ctypes.c_ubyte(dynamixel.groupBulkReadIsAvailable(self.group_pos_vel, dxl_id, ADDR_MX_PRESENT_POS_VEL, LEN_MX_PRESENT_POS_VEL)).value
             if dxl_getdata_result != 1:
                 #send last known values
-                print("[ID:%03d] groupBulkRead get_pos_vel failed. Sending last known value" % (dxl_id))
+                dxl_errored.append(dxl_id)
                 self.dxl_present_position[i] = self.dxl_last_position[i].copy()
                 self.dxl_present_velocity[i] = self.dxl_last_velocity[i].copy()
             else:
@@ -212,7 +213,9 @@ class dxl():
 
                 self.dxl_present_position[i] = POS_SCALE*dxl_present_position
                 self.dxl_present_velocity[i] = VEL_SCALE*dxl_present_velocity
-            
+        
+        if len(dxl_errored):
+            print("groupBulkRead get_pos_vel failed. Sending last known values for dynamixel ids: " + str(dxl_errored),flush=True)
         return self.dxl_present_position.copy(), self.dxl_present_velocity.copy()
 
 
