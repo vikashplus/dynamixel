@@ -133,6 +133,7 @@ class dxl():
         print("Dynamixel has been successfully connected")
 
 
+    # Cheak health
     def okay(self):
         dxl_comm_result = dynamixel.getLastTxRxResult(self.port_num, PROTOCOL_VERSION)
         dxl_error = dynamixel.getLastRxPacketError(self.port_num, PROTOCOL_VERSION)
@@ -149,9 +150,15 @@ class dxl():
     # Engage/ Disengae the motors. enable = True/ False
     def engage_motor(self, motor_id, enable):
         for dxl_id in motor_id:
-            dynamixel.write1ByteTxRx(self.port_num, PROTOCOL_VERSION, dxl_id, ADDR_MX_TORQUE_ENABLE, enable)
-            if (not self.okay()):
-                quit('dxl%d: Error with ADDR_MX_TORQUE_ENABLE'%dxl_id)
+
+            # fault handelling
+            while(True):
+                dynamixel.write1ByteTxRx(self.port_num, PROTOCOL_VERSION, dxl_id, ADDR_MX_TORQUE_ENABLE, enable)
+                if(self.okay()):
+                    break
+                else:
+                    print('dxl%d: Error with ADDR_MX_TORQUE_ENABLE. Retrying ...' %dxl_id, flush=True)
+                    time.sleep(0.25)
 
 
     # Returns pos in radians and velocity in radian/ sec
