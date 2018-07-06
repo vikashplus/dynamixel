@@ -163,7 +163,7 @@ if __name__ == '__main__':
     # dxl_ids = [20, 21, 22]
     # dxl_ids = [30, 31, 32]
     # dxl_ids = [10, 11, 12, 20, 21, 22, 30, 31, 32]
-    dxl_ids = np.array([40])
+    dxl_ids = [40]
     # Connect
     dy = dxl(dxl_ids)
 
