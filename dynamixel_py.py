@@ -5,18 +5,18 @@ os.sys.path.append('../dynamixel_functions_py')             # Path setting
 import dynamixel_functions as dynamixel                     # Uses Dynamixel SDK library
 
 # Control table address
-ADDR_MX_TORQUE_ENABLE       = 24                            # Control table address is different in Dynamixel model
-ADDR_MX_GOAL_POSITION       = 30
-ADDR_MX_PRESENT_POSITION    = 36
-ADDR_MX_PRESENT_VELOCITY    = 38
-ADDR_MX_PRESENT_POS_VEL     = 36                            # Trick to get position and velocity at once
-ADDR_MX_MAX_VELOCITY        = 32
+ADDR_MX_TORQUE_ENABLE       = 64#24                            # Control table address is different in Dynamixel model
+ADDR_MX_GOAL_POSITION       = 116#30
+ADDR_MX_PRESENT_POSITION    = 132#36
+ADDR_MX_PRESENT_VELOCITY    = 128#38
+ADDR_MX_PRESENT_POS_VEL     = 132#36                            # Trick to get position and velocity at once
+ADDR_MX_MAX_VELOCITY        = 44
 
 # Data Byte Length
-LEN_MX_PRESENT_POSITION     = 2
-LEN_MX_PRESENT_VELOCITY     = 2
-LEN_MX_PRESENT_POS_VEL      = 4
-LEN_MX_GOAL_POSITION        = 2
+LEN_MX_PRESENT_POSITION     = 4
+LEN_MX_PRESENT_VELOCITY     = 4
+LEN_MX_PRESENT_POS_VEL      = 8
+LEN_MX_GOAL_POSITION        = 4
 
 # torque control mode options
 ADDR_MX_TORQUE_CONTROL_MODE = 70
@@ -29,20 +29,20 @@ DXL_MAX_CCW_TORQUE_VALUE    = 1023
 LEN_MX_GOAL_TORQUE          = 2
 
 # Protocol version
-PROTOCOL_VERSION            = 1                             # See which protocol version is used in the Dynamixel
+PROTOCOL_VERSION            = 2                             # See which protocol version is used in the Dynamixel
 
 # Default setting
 MX12                        = 1
 MX28                        = 2
 MX64                        = 3
-
+XH430                       = 1
 
 # Settings for MX28
 POS_SCALE = 2*np.pi/4096 #(=.088 degrees)
 VEL_SCALE = 0.11 * 2 * np.pi / 60 #(=0.11rpm)
 
 
-BAUDRATE                    = 1000000
+BAUDRATE                    = 57600
 DEVICENAME                  = "/dev/ttyACM0".encode('utf-8')# Check which port is being used on your controller
                                                             # ex) Windows: "COM1"   Linux: "/dev/ttyUSB0" Mac: "/dev/tty.usbserial-*"
 
@@ -319,10 +319,10 @@ class dxl():
 
         # Write goal position
         for i in range(len(motor_id)):
-            dynamixel.write2ByteTxRx(self.port_num, PROTOCOL_VERSION, motor_id[i], ADDR_MX_GOAL_POSITION, int(des_pos_inRadians[i]/POS_SCALE))
+            dynamixel.write4ByteTxRx(self.port_num, PROTOCOL_VERSION, motor_id[i], ADDR_MX_GOAL_POSITION, int(des_pos_inRadians[i]/POS_SCALE))
         if (not self.okay()):
             self.close(motor_id)
-            quit('error setting ADDR_MX_GOAL_POSITION')
+            quit('error setting ADDR_MX_GOAL_POSITION =====')
 
 
     # Expects des_pos in radians (0-2*pi)
@@ -409,7 +409,7 @@ class dxl():
     # Set maximum velocity
     def set_max_vel(self, motor_id, max_vel):
         for dxl_id in motor_id:
-            dynamixel.write2ByteTxRx(self.port_num, PROTOCOL_VERSION, dxl_id, ADDR_MX_MAX_VELOCITY, max_vel)
+            dynamixel.write4ByteTxRx(self.port_num, PROTOCOL_VERSION, dxl_id, ADDR_MX_MAX_VELOCITY, max_vel)
             if (not self.okay()):
                 self.close(motor_id)
                 quit('error setting ADDR_MX_MAX_VELOCITY')
@@ -431,12 +431,12 @@ if __name__ == '__main__':
     dxl_goal_position = [DXL_MINIMUM_POSITION_VALUE*POS_SCALE, DXL_MAXIMUM_POSITION_VALUE*POS_SCALE]         # Goal position
     index = 0
     
-    dxl_ids =  [2, 4]
+    dxl_ids =  [1, 2]
     # dxl_ids =  [10, 11, 12, 20, 21, 22, 30, 31, 32, 40]
     dy = dxl(dxl_ids)
 
     # Test timing ==================================
-    cnt = 1000
+    cnt = 10
     print("Testing timings (avg over %d trials for %d motors) -------------"% (cnt, len(dxl_ids)))
     t_s = time.time()
     for i in range(cnt):
@@ -492,7 +492,7 @@ if __name__ == '__main__':
         for j in range(len(dxl_ids)):
             print("cnt:%03d, dxl_id:%01d ==> Pos:%2.2f, Vel:%1.3f" % (i, dxl_ids[j], dxl_present_position[j], dxl_present_velocity[j]))
     dy.engage_motor(dxl_ids, True)
-    dy.set_max_vel(dxl_ids, 0) # 1-1023, 0:max_rpm
+    # dy.set_max_vel(dxl_ids, 0) # 1-1023, 0:max_rpm
     print("Motor engaged")
 
     
