@@ -133,6 +133,7 @@ class dxl():
         print("Dynamixel has been successfully connected")
 
 
+    # Cheak health
     def okay(self):
         dxl_comm_result = dynamixel.getLastTxRxResult(self.port_num, PROTOCOL_VERSION)
         dxl_error = dynamixel.getLastRxPacketError(self.port_num, PROTOCOL_VERSION)
@@ -149,9 +150,15 @@ class dxl():
     # Engage/ Disengae the motors. enable = True/ False
     def engage_motor(self, motor_id, enable):
         for dxl_id in motor_id:
-            dynamixel.write1ByteTxRx(self.port_num, PROTOCOL_VERSION, dxl_id, ADDR_MX_TORQUE_ENABLE, enable)
-            if (not self.okay()):
-                quit('dxl%d: Error with ADDR_MX_TORQUE_ENABLE'%dxl_id)
+
+            # fault handelling
+            while(True):
+                dynamixel.write1ByteTxRx(self.port_num, PROTOCOL_VERSION, dxl_id, ADDR_MX_TORQUE_ENABLE, enable)
+                if(self.okay()):
+                    break
+                else:
+                    print('dxl%d: Error with ADDR_MX_TORQUE_ENABLE. Retrying ...' %dxl_id, flush=True)
+                    time.sleep(0.25)
 
 
     # Returns pos in radians and velocity in radian/ sec
@@ -189,7 +196,12 @@ class dxl():
 
         # Bulkread present positions
         dynamixel.groupBulkReadTxRxPacket(self.group_pos_vel)
+        if(not self.okay()):
+            print("try one more time. If not, we will spoof packets below ====================== ")
+            # try one more time. If not, we will spoof packets below.
+            dynamixel.groupBulkReadTxRxPacket(self.group_pos_vel)
 
+        dxl_errored = []
         # Retrieve data
         for i in range(self.n_motors):
             dxl_id = motor_id[i]
@@ -198,7 +210,7 @@ class dxl():
             dxl_getdata_result = ctypes.c_ubyte(dynamixel.groupBulkReadIsAvailable(self.group_pos_vel, dxl_id, ADDR_MX_PRESENT_POS_VEL, LEN_MX_PRESENT_POS_VEL)).value
             if dxl_getdata_result != 1:
                 #send last known values
-                print("[ID:%03d] groupBulkRead get_pos_vel failed. Sending last known value" % (dxl_id))
+                dxl_errored.append(dxl_id)
                 self.dxl_present_position[i] = self.dxl_last_position[i].copy()
                 self.dxl_present_velocity[i] = self.dxl_last_velocity[i].copy()
             else:
@@ -212,7 +224,9 @@ class dxl():
 
                 self.dxl_present_position[i] = POS_SCALE*dxl_present_position
                 self.dxl_present_velocity[i] = VEL_SCALE*dxl_present_velocity
-            
+        
+        if len(dxl_errored):
+            print("groupBulkRead get_pos_vel failed. Sending last known values for dynamixel ids: " + str(dxl_errored),flush=True)
         return self.dxl_present_position.copy(), self.dxl_present_velocity.copy()
 
 
@@ -418,16 +432,17 @@ if __name__ == '__main__':
     index = 0
     
     dxl_ids =  [2, 4]
+    # dxl_ids =  [10, 11, 12, 20, 21, 22, 30, 31, 32, 40]
     dy = dxl(dxl_ids)
 
     # Test timing ==================================
-    cnt = 100
-    print("Testing timings ----------------------------")
+    cnt = 1000
+    print("Testing timings (avg over %d trials for %d motors) -------------"% (cnt, len(dxl_ids)))
     t_s = time.time()
     for i in range(cnt):
         dxl_present_position, dxl_present_velocity = dy.get_pos_vel(dxl_ids)
     t_e = time.time()
-    print("Bulk [pos+vel] read takes:\t\t %0.4f sec **BEST**" % ((t_e-t_s)/float(cnt)))
+    print("Bulk [pos+vel] read takes:\t\t %0.5f sec **BEST**" % ((t_e-t_s)/float(cnt)))
 
     t_s = time.time()
     for i in range(cnt):
@@ -441,14 +456,14 @@ if __name__ == '__main__':
         dxl_present_position = dy.getIndividual_pos(dxl_ids)
         dxl_present_velocity = dy.getIndividual_vel(dxl_ids)
     t_e = time.time()
-    print("Individual [pos,vel] read takes:\t %0.4f sec" % ((t_e-t_s)/float(cnt)))
+    print("Individual [pos,vel] read takes:\t %0.5f sec" % ((t_e-t_s)/float(cnt)))
     
     t_s = time.time()
     for i in range(cnt):
         dxl_present_position, dxl_present_velocity = dy.get_pos_vel(dxl_ids)
         dy.set_des_pos(dxl_ids, dxl_present_position)
     t_e = time.time()
-    print("Bulk [pos+vel,ctrl] loop takes:\t\t %0.4f sec **BEST**" % ((t_e-t_s)/float(cnt)))
+    print("Bulk [pos+vel,ctrl] loop takes:\t\t %0.5f sec **BEST**" % ((t_e-t_s)/float(cnt)))
 
     t_s = time.time()
     for i in range(cnt):
@@ -456,7 +471,7 @@ if __name__ == '__main__':
         dxl_present_velocity = dy.get_vel(dxl_ids)
         dy.set_des_pos(dxl_ids, dxl_present_position)
     t_e = time.time()
-    print("Bulk [pos,vel,ctrl] loop takes:\t\t %0.4f sec" % ((t_e-t_s)/float(cnt)))
+    print("Bulk [pos,vel,ctrl] loop takes:\t\t %0.5f sec" % ((t_e-t_s)/float(cnt)))
 
     t_s = time.time()
     for i in range(cnt):
@@ -464,14 +479,14 @@ if __name__ == '__main__':
         dxl_present_velocity = dy.getIndividual_vel(dxl_ids)
         dy.setIndividual_des_pos(dxl_ids, dxl_present_position)
     t_e = time.time()
-    print("Individual [pos,vel,ctrl] takes:\t %0.4f sec" % ((t_e-t_s)/float(cnt)))
+    print("Individual [pos,vel,ctrl] takes:\t %0.5f sec" % ((t_e-t_s)/float(cnt)))
 
 
     # Test reads ==================================
     dy.engage_motor(dxl_ids, False)
     print("Motor disengaged")
     print("Testing position and velocity --------------")
-    raw_input("Press enter and apply external forces")
+    input("Press enter and apply external forces")
     for i in range(cnt):
         dxl_present_position, dxl_present_velocity = dy.get_pos_vel(dxl_ids)
         for j in range(len(dxl_ids)):
@@ -517,7 +532,7 @@ if __name__ == '__main__':
     while 1:
         cnt = 0
         # wait for user input
-        user = raw_input("Press ENTER to continue! (or press q+ENTER to quit!)")
+        user = input("Press ENTER to continue! (or press q+ENTER to quit!)")
         if user == 'q':
             break
 
