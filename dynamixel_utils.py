@@ -58,14 +58,12 @@ def plot_paths(paths, filename, qpos_lims=None, qvel_lims=None, ctrl_lims=None):
         print("path saved to " + fn)
 
 
-def chirp(dy, dxl_ids, frequency=2.0, time_horizon=5.0):
+def chirp(dy, dxl_ids, frequency=2.0, time_horizon=5.0, pos_min=0, pos_max=np.pi/2.):
     clk =[]
     qpos=[]
     qvel=[]
     ctrl=[]
 
-    pos_min = 0 
-    pos_max = 2.0*np.pi
     pos_mean = (pos_max + pos_min)/2.0
     pos_scale = (pos_max - pos_min)/2.0
     
@@ -76,7 +74,7 @@ def chirp(dy, dxl_ids, frequency=2.0, time_horizon=5.0):
         t_n = time.time() - t_s
         
         qp, qv = dy.get_pos_vel(dxl_ids)
-        des_pos = [pos_mean + pos_scale*np.sin(frequency*2.0*np.pi*t_n)*np.cos(frequency*2.0*t_n)]*np.ones(len(dxl_ids))
+        des_pos = [pos_mean - pos_scale*np.sin(frequency*2.0*np.pi*t_n)*np.cos(frequency*2.0*t_n)]*np.ones(len(dxl_ids))
         # print(des_pos)
         dy.set_des_pos(dxl_ids, des_pos)
 
@@ -162,14 +160,13 @@ if __name__ == '__main__':
     # dxl_ids = [10, 11, 12]
     # dxl_ids = [20, 21, 22]
     # dxl_ids = [30, 31, 32]
-    # dxl_ids = [10, 11, 12, 20, 21, 22, 30, 31, 32]
-    dxl_ids = np.array([40])
+    dxl_ids = [10, 11, 12, 20, 21, 22, 30, 31, 32]
+
     # Connect
     dy = dxl(dxl_ids)
+    dy.engage_motor(dxl_ids, False)
 
-    # dy.engage_motor(dxl_ids, False)
-
-    while True:
+    for i in range(10):
         dxl_present_position, dxl_present_velocity = dy.get_pos_vel(dxl_ids)
         print(dxl_present_position)
 
@@ -177,7 +174,7 @@ if __name__ == '__main__':
     update_rate = test_update_rate(dy, dxl_ids, 1000)
 
     # Move all the joints and plot the trace
-    trace = chirp(dy, dxl_ids, 1, 4)
+    trace = chirp(dy, dxl_ids, frequency=1.0, ime_horizon=np.pi*2.0, pos_min=3.0, pos_max=4)
     plot_paths(trace, 'chirp')
     sio.savemat('chirp.mat', {'trace':trace})
     trace = step(dy, dxl_ids, 1, 4)
@@ -186,3 +183,4 @@ if __name__ == '__main__':
 
     # Close
     dy.close(dxl_ids)
+    print("Connection closed succesfully")
