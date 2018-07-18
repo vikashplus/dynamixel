@@ -28,8 +28,6 @@ DXL_MIN_CCW_TORQUE_VALUE    = 0
 DXL_MAX_CCW_TORQUE_VALUE    = 1023
 LEN_MX_GOAL_TORQUE          = 2
 
-# Protocol version
-PROTOCOL_VERSION            = 1                             # See which protocol version is used in the Dynamixel
 
 # Default setting
 MX12                        = 1
@@ -41,10 +39,6 @@ MX64                        = 3
 POS_SCALE = 2*np.pi/4096 #(=.088 degrees)
 VEL_SCALE = 0.11 * 2 * np.pi / 60 #(=0.11rpm)
 
-
-BAUDRATE                    = 1000000
-DEVICENAME                  = "/dev/ttyACM0".encode('utf-8')# Check which port is being used on your controller
-                                                            # ex) Windows: "COM1"   Linux: "/dev/ttyUSB0" Mac: "/dev/tty.usbserial-*"
 
 TORQUE_ENABLE               = 1                             # Value for enabling the torque
 TORQUE_DISABLE              = 0                             # Value for disabling the torque
@@ -60,7 +54,9 @@ COMM_TX_FAIL                = -1001                         # Communication Tx F
 
 
 class dxl():
-    def __init__(self, motor_id):
+
+    # DEVICENAME: Port name being used on your controller # ex) Windows: "COM1"   Linux: "/dev/ttyUSB0" Mac: "/dev/tty.usbserial-*"
+    def __init__(self, motor_id, BAUDRATE=1000000, DEVICENAME="/dev/ttyACM0".encode('utf-8'), PROTOCOL_VERSION=1):
 
         self.n_motors = len(motor_id)
 
