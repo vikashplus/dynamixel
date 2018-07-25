@@ -4,7 +4,7 @@ import numpy as np
 import scipy.io as sio
     
 global update_rate
-
+import click
 
 # Make pretty plots to show off your movements
 def plot_paths(paths, filename, qpos_lims=None, qvel_lims=None, ctrl_lims=None):
@@ -75,7 +75,6 @@ def chirp(dy, dxl_ids, frequency=2.0, time_horizon=5.0, pos_min=0, pos_max=np.pi
         
         qp, qv = dy.get_pos_vel(dxl_ids)
         des_pos = [pos_mean - pos_scale*np.sin(frequency*2.0*np.pi*t_n)*np.cos(frequency*2.0*t_n)]*np.ones(len(dxl_ids))
-        # print(des_pos)
         dy.set_des_pos(dxl_ids, des_pos)
 
         clk.append(t_n)
@@ -96,14 +95,12 @@ def chirp(dy, dxl_ids, frequency=2.0, time_horizon=5.0, pos_min=0, pos_max=np.pi
     return paths
 
 
-def step(dy, dxl_ids, frequency=1.0, time_horizon=5.0):
+def step(dy, dxl_ids, frequency=1.0, time_horizon=5.0, pos_min=0, pos_max=np.pi/2):
     clk =[]
     qpos=[]
     qvel=[]
     ctrl=[]
 
-    pos_min = 0 
-    pos_max = 2.0*np.pi
     pos_mean = (pos_max + pos_min)/2.0
     pos_scale = (pos_max - pos_min)/2.0
     
@@ -138,7 +135,7 @@ def step(dy, dxl_ids, frequency=1.0, time_horizon=5.0):
 
 # Test my update rate. I got good reflexes
 def test_update_rate(dy, dxl_ids, cnt = 1000):
-    print("Testing update rate of dxl")
+    print("Testing update rate of dxl -----")
     t_s = time.time()
     for i in range(cnt):
         dxl_present_position, dxl_present_velocity = dy.get_pos_vel(dxl_ids)
@@ -150,37 +147,48 @@ def test_update_rate(dy, dxl_ids, cnt = 1000):
 
 
 
-
-if __name__ == '__main__':
+DESC = ''' Pick the port to run test'''
+@click.command(help=DESC)
+@click.option('--device_no', type=str, help='pick the device number', default="0")
+def main(device_no):
     
     global update_rate
-    update_rate = 444
 
     print("============= dxl ==============")
-    # dxl_ids = [10, 11, 12]
-    # dxl_ids = [20, 21, 22]
-    # dxl_ids = [30, 31, 32]
-    dxl_ids = [10, 11, 12, 20, 21, 22, 30, 31, 32]
+    # dxl_ids = [12]; update_rate = 1094
+    # dxl_ids = [10, 11, 12]; update_rate = 444
+    # dxl_ids = [20, 21, 22]; update_rate = 444
+    # dxl_ids = [30, 31, 32]; update_rate = 444
+    dxl_ids = [10, 11, 12, 20, 21, 22, 30, 31, 32]; update_rate = 248
 
     # Connect
-    dy = dxl(dxl_ids)
+    device_name = "/dev/ttyACM"+device_no
+    dy = dxl(dxl_ids, DEVICENAME=device_name.encode('utf-8'), PROTOCOL_VERSION=2)
     dy.engage_motor(dxl_ids, False)
 
-    for i in range(10):
-        dxl_present_position, dxl_present_velocity = dy.get_pos_vel(dxl_ids)
-        print(dxl_present_position)
+    # Query
+    dxl_present_position, dxl_present_velocity = dy.get_pos_vel(dxl_ids)
+    print("Joint Positions ----------------")
+    print(dxl_present_position)
+    print("Joint Velocities ---------------")
+    print(dxl_present_velocity)
 
     # Test update rate
-    update_rate = test_update_rate(dy, dxl_ids, 1000)
+    update_rate = test_update_rate(dy, dxl_ids, 2000)
 
     # Move all the joints and plot the trace
-    trace = chirp(dy, dxl_ids, frequency=1.0, ime_horizon=np.pi*2.0, pos_min=3.0, pos_max=4)
-    plot_paths(trace, 'chirp')
-    sio.savemat('chirp.mat', {'trace':trace})
-    trace = step(dy, dxl_ids, 1, 4)
-    plot_paths(trace, 'step')
+    dy.engage_motor(dxl_ids, True)
+    trace = chirp(dy, dxl_ids, frequency=1.0, time_horizon=np.pi*2.0, pos_min=3.25, pos_max=4)
+    plot_paths(trace, 'chirp', qvel_lims=[-10, 10])
+    # sio.savemat('chirp.mat', {'trace':trace})
+    
+    trace = step(dy, dxl_ids, 1, 4, pos_min=3.25, pos_max=4.0)
+    plot_paths(trace, 'step', qvel_lims=[-10, 10])
     sio.savemat('step.mat', {'trace':trace})
 
     # Close
     dy.close(dxl_ids)
     print("Connection closed succesfully")
+
+if __name__ == '__main__':
+    main()

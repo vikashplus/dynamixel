@@ -9,7 +9,7 @@ ADDR_MX_TORQUE_ENABLE       = 64#24                            # Control table a
 ADDR_MX_GOAL_POSITION       = 116#30
 ADDR_MX_PRESENT_POSITION    = 132#36
 ADDR_MX_PRESENT_VELOCITY    = 128#38
-ADDR_MX_PRESENT_POS_VEL     = 132#36                            # Trick to get position and velocity at once
+ADDR_MX_PRESENT_POS_VEL     = 128#36                            # Trick to get position and velocity at once
 ADDR_MX_MAX_VELOCITY        = 44
 
 # Data Byte Length
@@ -59,7 +59,8 @@ class dxl():
     def __init__(self, motor_id, BAUDRATE=1000000, DEVICENAME="/dev/ttyACM0".encode('utf-8'), PROTOCOL_VERSION=1):
 
         self.n_motors = len(motor_id)
-
+        self.PROTOCOL_VERSION = PROTOCOL_VERSION
+        
         # default mode 
         self.ctrl_mode = TORQUE_DISABLE
 
@@ -94,11 +95,11 @@ class dxl():
         # Initialize Group instance
         
         # controls
-        self.group_desPos = dynamixel.groupSyncWrite(self.port_num, PROTOCOL_VERSION, ADDR_MX_GOAL_POSITION, LEN_MX_GOAL_POSITION)
-        self.group_desTor = dynamixel.groupSyncWrite(self.port_num, PROTOCOL_VERSION, ADDR_MX_GOAL_TORQUE, LEN_MX_GOAL_TORQUE)
+        self.group_desPos = dynamixel.groupSyncWrite(self.port_num, self.PROTOCOL_VERSION, ADDR_MX_GOAL_POSITION, LEN_MX_GOAL_POSITION)
+        self.group_desTor = dynamixel.groupSyncWrite(self.port_num, self.PROTOCOL_VERSION, ADDR_MX_GOAL_TORQUE, LEN_MX_GOAL_TORQUE)
 
         # positions
-        self.group_pos = dynamixel.groupBulkRead(self.port_num, PROTOCOL_VERSION)
+        self.group_pos = dynamixel.groupBulkRead(self.port_num, self.PROTOCOL_VERSION)
         for m_id in motor_id:
             dxl_addparam_result = ctypes.c_ubyte(dynamixel.groupBulkReadAddParam(self.group_pos, m_id, ADDR_MX_PRESENT_POSITION, LEN_MX_PRESENT_POSITION)).value
             if dxl_addparam_result != 1:
@@ -106,7 +107,7 @@ class dxl():
                 quit()
         
         # velocities
-        self.group_vel = dynamixel.groupBulkRead(self.port_num, PROTOCOL_VERSION)
+        self.group_vel = dynamixel.groupBulkRead(self.port_num, self.PROTOCOL_VERSION)
         for m_id in motor_id:
             dxl_addparam_result = ctypes.c_ubyte(dynamixel.groupBulkReadAddParam(self.group_vel, m_id, ADDR_MX_PRESENT_VELOCITY, LEN_MX_PRESENT_VELOCITY)).value
             if dxl_addparam_result != 1:
@@ -114,7 +115,7 @@ class dxl():
                 quit()
 
         # positions and velocities
-        self.group_pos_vel = dynamixel.groupBulkRead(self.port_num, PROTOCOL_VERSION)
+        self.group_pos_vel = dynamixel.groupBulkRead(self.port_num, self.PROTOCOL_VERSION)
         for m_id in motor_id:
             dxl_addparam_result = ctypes.c_ubyte(dynamixel.groupBulkReadAddParam(self.group_pos_vel, m_id, ADDR_MX_PRESENT_POS_VEL, LEN_MX_PRESENT_POS_VEL)).value
             if dxl_addparam_result != 1:
@@ -126,18 +127,18 @@ class dxl():
         self.dxl_present_velocity = float('nan')*np.zeros(self.n_motors)
         self.dxl_last_position = float('nan')*np.zeros(self.n_motors)
         self.dxl_last_velocity = float('nan')*np.zeros(self.n_motors)
-        print("Dynamixel has been successfully connected")
+        print("Dynamixels successfully connected")
 
 
     # Cheak health
     def okay(self):
-        dxl_comm_result = dynamixel.getLastTxRxResult(self.port_num, PROTOCOL_VERSION)
-        dxl_error = dynamixel.getLastRxPacketError(self.port_num, PROTOCOL_VERSION)
+        dxl_comm_result = dynamixel.getLastTxRxResult(self.port_num, self.PROTOCOL_VERSION)
+        dxl_error = dynamixel.getLastRxPacketError(self.port_num, self.PROTOCOL_VERSION)
         if dxl_comm_result != COMM_SUCCESS:
-            print(dynamixel.getTxRxResult(PROTOCOL_VERSION, dxl_comm_result))
+            print(dynamixel.getTxRxResult(self.PROTOCOL_VERSION, dxl_comm_result))
             return False
         elif dxl_error != 0:
-            print(dynamixel.getRxPacketError(PROTOCOL_VERSION, dxl_error))
+            print(dynamixel.getRxPacketError(self.PROTOCOL_VERSION, dxl_error))
             return False
         else:
             return True
@@ -149,7 +150,7 @@ class dxl():
 
             # fault handelling
             while(True):
-                dynamixel.write1ByteTxRx(self.port_num, PROTOCOL_VERSION, dxl_id, ADDR_MX_TORQUE_ENABLE, enable)
+                dynamixel.write1ByteTxRx(self.port_num, self.PROTOCOL_VERSION, dxl_id, ADDR_MX_TORQUE_ENABLE, enable)
                 if(self.okay()):
                     break
                 else:
@@ -276,7 +277,7 @@ class dxl():
         
         # Read present position and velocity
         for dxl_id in motor_id:
-            dxl_present_position.append(dynamixel.read2ByteTxRx(self.port_num, PROTOCOL_VERSION, dxl_id, ADDR_MX_PRESENT_POSITION))
+            dxl_present_position.append(dynamixel.read2ByteTxRx(self.port_num, self.PROTOCOL_VERSION, dxl_id, ADDR_MX_PRESENT_POSITION))
         if (not self.okay()):
             self.close(motor_id)
             quit('error getting ADDR_MX_PRESENT_POSITION')
@@ -288,7 +289,7 @@ class dxl():
         dxl_present_velocity = []
         # Read present position
         for dxl_id in motor_id:
-            dxl_present_velocity.append(dynamixel.read2ByteTxRx(self.port_num, PROTOCOL_VERSION, dxl_id, ADDR_MX_PRESENT_VELOCITY))
+            dxl_present_velocity.append(dynamixel.read2ByteTxRx(self.port_num, self.PROTOCOL_VERSION, dxl_id, ADDR_MX_PRESENT_VELOCITY))
         if (not self.okay()):
             self.close(motor_id)
             quit('error getting ADDR_MX_PRESENT_VELOCITY')
@@ -307,7 +308,7 @@ class dxl():
         # if in torque mode, activate position control mode
         if(self.ctrl_mode == TORQUE_ENABLE):
             for dxl_id in motor_id:
-                dynamixel.write1ByteTxRx(self.port_num, PROTOCOL_VERSION, dxl_id, ADDR_MX_TORQUE_CONTROL_MODE, TORQUE_DISABLE)
+                dynamixel.write1ByteTxRx(self.port_num, self.PROTOCOL_VERSION, dxl_id, ADDR_MX_TORQUE_CONTROL_MODE, TORQUE_DISABLE)
             if (not self.okay()):
                 self.close(motor_id)
                 quit('error disabling ADDR_MX_TORQUE_CONTROL_MODE')
@@ -315,7 +316,7 @@ class dxl():
 
         # Write goal position
         for i in range(len(motor_id)):
-            dynamixel.write4ByteTxRx(self.port_num, PROTOCOL_VERSION, motor_id[i], ADDR_MX_GOAL_POSITION, int(des_pos_inRadians[i]/POS_SCALE))
+            dynamixel.write4ByteTxRx(self.port_num, self.PROTOCOL_VERSION, motor_id[i], ADDR_MX_GOAL_POSITION, int(des_pos_inRadians[i]/POS_SCALE))
         if (not self.okay()):
             self.close(motor_id)
             quit('error setting ADDR_MX_GOAL_POSITION =====')
@@ -328,7 +329,7 @@ class dxl():
         # if in torque mode, activate position control mode
         if(self.ctrl_mode == TORQUE_ENABLE):
             for dxl_id in motor_id:
-                dynamixel.write1ByteTxRx(self.port_num, PROTOCOL_VERSION, dxl_id, ADDR_MX_TORQUE_CONTROL_MODE, TORQUE_DISABLE)
+                dynamixel.write1ByteTxRx(self.port_num, self.PROTOCOL_VERSION, dxl_id, ADDR_MX_TORQUE_CONTROL_MODE, TORQUE_DISABLE)
             if (not self.okay()):
                 self.close(motor_id)
                 quit('error disabling ADDR_MX_TORQUE_CONTROL_MODE')
@@ -358,7 +359,7 @@ class dxl():
         # If in position mode, activate torque mode
         if(self.ctrl_mode == TORQUE_DISABLE):
             for dxl_id in motor_id:
-                dynamixel.write1ByteTxRx(self.port_num, PROTOCOL_VERSION, dxl_id, ADDR_MX_TORQUE_CONTROL_MODE, TORQUE_ENABLE)
+                dynamixel.write1ByteTxRx(self.port_num, self.PROTOCOL_VERSION, dxl_id, ADDR_MX_TORQUE_CONTROL_MODE, TORQUE_ENABLE)
             if (not self.okay()):
                 self.close(motor_id)
                 quit('error enabling ADDR_MX_TORQUE_CONTROL_MODE')
@@ -388,7 +389,7 @@ class dxl():
         # If in position mode, activate torque mode
         if(self.ctrl_mode == TORQUE_DISABLE):
             for dxl_id in motor_id:
-                dynamixel.write1ByteTxRx(self.port_num, PROTOCOL_VERSION, dxl_id, ADDR_MX_TORQUE_CONTROL_MODE, TORQUE_ENABLE)
+                dynamixel.write1ByteTxRx(self.port_num, self.PROTOCOL_VERSION, dxl_id, ADDR_MX_TORQUE_CONTROL_MODE, TORQUE_ENABLE)
             if (not self.okay()):
                 self.close(motor_id)
                 quit('error enabling ADDR_MX_TORQUE_CONTROL_MODE')
@@ -396,7 +397,7 @@ class dxl():
 
         # Write goal position
         for i in range(len(motor_id)):
-            dynamixel.write2ByteTxRx(self.port_num, PROTOCOL_VERSION, motor_id[i], ADDR_MX_GOAL_TORQUE, int(des_tor[i]))
+            dynamixel.write2ByteTxRx(self.port_num, self.PROTOCOL_VERSION, motor_id[i], ADDR_MX_GOAL_TORQUE, int(des_tor[i]))
         if (not self.okay()):
             self.close(motor_id)
             quit('error setting ADDR_MX_GOAL_TORQUE')
@@ -405,7 +406,7 @@ class dxl():
     # Set maximum velocity
     def set_max_vel(self, motor_id, max_vel):
         for dxl_id in motor_id:
-            dynamixel.write4ByteTxRx(self.port_num, PROTOCOL_VERSION, dxl_id, ADDR_MX_MAX_VELOCITY, max_vel)
+            dynamixel.write4ByteTxRx(self.port_num, self.PROTOCOL_VERSION, dxl_id, ADDR_MX_MAX_VELOCITY, max_vel)
             if (not self.okay()):
                 self.close(motor_id)
                 quit('error setting ADDR_MX_MAX_VELOCITY')
