@@ -22,5 +22,5 @@ make
 ```dxl_lib = cdll.LoadLibrary("/home/vik/Libraries/DynamixelSDK/c/build/linux64/libdxl_x64_c.so")```
 
 # usage
-1. Open robot.py and pick the connected dynamixel type 
-2. `python robot.py`to test
+1. Open dynamixel_utils.py and pick the connected dynamixel type 
+2. `python dynamixel_utils.py`to test
