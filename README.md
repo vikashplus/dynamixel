@@ -3,7 +3,12 @@
 Primarily designed for MX series
 
 # Set up
-0. Clone the [dynamixel robotis repo](https://github.com/ROBOTIS-GIT/DynamixelSDK.git) 
+0. Clone the [dynamixel robotis repo](https://github.com/ROBOTIS-GIT/DynamixelSDK.git). 
+Note that the repo has gone through changes that aren't backward compatible. Checkout an earlier commit compatibility .
+```
+git clone https://github.com/ROBOTIS-GIT/DynamixelSDK.git  
+git checkout 2ae37fc2390eedcd8fe356f40ece398720db0532 
+```
 
 1. build the c library
 
