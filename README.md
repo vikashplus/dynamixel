@@ -7,6 +7,7 @@ Primarily designed for MX series
 Note that the repo has gone through changes that aren't backward compatible. Checkout an earlier commit compatibility .
 ```
 git clone https://github.com/ROBOTIS-GIT/DynamixelSDK.git  
+cd DynamixelSDK
 git checkout 2ae37fc2390eedcd8fe356f40ece398720db0532 
 ```
 
@@ -21,7 +22,7 @@ make
 
 ```export PYTHONPATH="/home/vik/Libraries/DynamixelSDK/python/dynamixel_functions_py:$PYTHONPATH"``` 
 
-3. Edit `dynamixel_functions.py` to point to the right libraries (absolute path)
+3. Edit `DynamixelSDK/python/dynamixel_functions_py/dynamixel_functions.py` to point to the right libraries (absolute path)
 
 
 ```dxl_lib = cdll.LoadLibrary("/home/vik/Libraries/DynamixelSDK/c/build/linux64/libdxl_x64_c.so")```
