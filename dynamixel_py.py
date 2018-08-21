@@ -56,7 +56,7 @@ COMM_TX_FAIL                = -1001                         # Communication Tx F
 class dxl():
 
     # DEVICENAME: Port name being used on your controller # ex) Windows: "COM1"   Linux: "/dev/ttyUSB0" Mac: "/dev/tty.usbserial-*"
-    def __init__(self, motor_id, BAUDRATE=1000000, DEVICENAME="/dev/ttyACM0".encode('utf-8'), PROTOCOL_VERSION=1):
+    def __init__(self, motor_id, BAUDRATE=1000000, DEVICENAME="/dev/ttyACM0", PROTOCOL_VERSION=1):
 
         self.n_motors = len(motor_id)
         self.PROTOCOL_VERSION = PROTOCOL_VERSION
@@ -66,7 +66,7 @@ class dxl():
 
         # Initialize PortHandler Structs
         # Set the port path and Get methods and members of PortHandlerLinux or PortHandlerWindows
-        self.port_num = dynamixel.portHandler(DEVICENAME)
+        self.port_num = dynamixel.portHandler(DEVICENAME.encode('utf-8'))
 
         # Initialize PacketHandler Structs
         dynamixel.packetHandler()
@@ -76,12 +76,12 @@ class dxl():
             print("Succeeded to open the port!")
         else:
             print("Failed to open the port")
-            os.system("sudo chmod a+rw /dev/ttyACM0")
+            os.system("sudo chmod a+rw %s"%DEVICENAME)
             print("Editing permissions and trying again")
             if dynamixel.openPort(self.port_num):
                 print("Succeeded to open the port!")
             else:
-                quit("Failed to open the port! Run following command and try again.\nsudo chmod a+rw /dev/ttyACM0")
+                quit("Failed to open the port! Run following command and try again.\nsudo chmod a+rw %s"%DEVICENAME)
 
         # Set port baudrate
         if dynamixel.setBaudRate(self.port_num, BAUDRATE):
