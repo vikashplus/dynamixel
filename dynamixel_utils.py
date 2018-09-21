@@ -149,21 +149,20 @@ def test_update_rate(dy, dxl_ids, cnt = 1000):
 
 DESC = ''' Pick the port to run test'''
 @click.command(help=DESC)
-@click.option('--device_no', type=str, help='pick the device number', default="0")
-def main(device_no):
+@click.option('--device_name', type=str, help='pick the device number', default="/dev/ttyUSB0")
+def main(device_name):
     
     global update_rate
 
     print("============= dxl ==============")
-    # dxl_ids = [12]; update_rate = 1094
+    # dxl_ids = [22]; update_rate = 1094
     # dxl_ids = [10, 11, 12]; update_rate = 444
     # dxl_ids = [20, 21, 22]; update_rate = 444
     # dxl_ids = [30, 31, 32]; update_rate = 444
-    dxl_ids = [10, 11, 12, 20, 21, 22, 30, 31, 32]; update_rate = 248
+    dxl_ids = [10, 11, 12, 20, 21, 22, 30, 31, 32, 50]; update_rate = 248
 
     # Connect
-    device_name = "/dev/ttyACM"+device_no
-    dy = dxl(dxl_ids, DEVICENAME=device_name.encode('utf-8'), PROTOCOL_VERSION=2)
+    dy = dxl(dxl_ids, DEVICENAME=device_name, PROTOCOL_VERSION=2)
     dy.engage_motor(dxl_ids, False)
 
     # Query
@@ -174,13 +173,13 @@ def main(device_no):
     print(dxl_present_velocity)
 
     # Test update rate
-    update_rate = test_update_rate(dy, dxl_ids, 2000)
+    update_rate = test_update_rate(dy, dxl_ids, 200)
 
     # Move all the joints and plot the trace
     dy.engage_motor(dxl_ids, True)
-    trace = chirp(dy, dxl_ids, frequency=1.0, time_horizon=np.pi*2.0, pos_min=3.25, pos_max=4)
+    trace = chirp(dy, dxl_ids, frequency=1.0, time_horizon=np.pi*10.0, pos_min=3.14-0.025, pos_max=3.14+.25)
     plot_paths(trace, 'chirp', qvel_lims=[-10, 10])
-    # sio.savemat('chirp.mat', {'trace':trace})
+    sio.savemat('chirp.mat', {'trace':trace})
     
     trace = step(dy, dxl_ids, 1, 4, pos_min=3.25, pos_max=4.0)
     plot_paths(trace, 'step', qvel_lims=[-10, 10])
