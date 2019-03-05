@@ -145,9 +145,9 @@ class dxl():
                 print("\n" + str(dynamixel.getRxPacketError(self.PROTOCOL_VERSION, dxl_error)) + ". Error_id:" + str(dxl_error))
             
             # print hardware status 
-            print("Motor id(status): [ ", end='')
-            for m_id in self.motor_id:
-                    print("%d(%d), " % (m_id, dynamixel.read1ByteTxRx(self.port_num, self.PROTOCOL_VERSION,\
+            print("Motor id(hardware status): [ ", end='')
+            for m_id in motor_id:
+                print("%d(%d), " % (m_id, dynamixel.read1ByteTxRx(self.port_num, self.PROTOCOL_VERSION,\
                      m_id, ADDR_MX_HARDWARE_ERROR)), end='')
             print("]", flush=True)
             return False
