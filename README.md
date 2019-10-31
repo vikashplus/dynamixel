@@ -27,6 +27,15 @@ make
 
 ```dxl_lib = cdll.LoadLibrary("/home/vik/Libraries/DynamixelSDK/c/build/linux64/libdxl_x64_c.so")```
 
+4. Edit user permissions to access ports
+
+```
+sudo usermod -a -G tty yourname
+sudo usermod -a -G dialup yourname
+```
+Note that logout/login will be required for the group addition to take effect.
+
+
 # usage
 1. Open dynamixel_utils.py and pick the connected dynamixel type 
 2. `python dynamixel_utils.py`to test
