@@ -31,7 +31,7 @@ make
 
 ```
 sudo usermod -a -G tty yourname
-sudo usermod -a -G dialup yourname
+sudo usermod -a -G dialout yourname
 ```
 Note that logout/login will be required for the group addition to take effect.
 
