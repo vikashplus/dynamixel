@@ -42,13 +42,13 @@ class Dynamixel_MX():
 
         # torque control mode options (left over from P1)
         self.ADDR_TORQUE_CONTROL_MODE = 70
-        self.ADDR_GOAL_TORQUE         = 71                            # Lowest byte of goal torque value
+        self.ADDR_GOAL_TORQUE         = -1                            # torque mode not supported
 
         # Data Byte Length
-        self.LEN_PRESENT_POSITION     = 4
-        self.LEN_PRESENT_VELOCITY     = 4
-        self.LEN_PRESENT_POS_VEL      = 8
-        self.LEN_GOAL_POSITION        = 4
+        self.LEN_PRESENT_POSITION     = 2
+        self.LEN_PRESENT_VELOCITY     = 2
+        self.LEN_PRESENT_POS_VEL      = 4
+        self.LEN_GOAL_POSITION        = 2
         self.LEN_GOAL_TORQUE          = 2
 
 DXL_NULL_TORQUE_VALUE       = 0
