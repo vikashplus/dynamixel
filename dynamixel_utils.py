@@ -104,7 +104,7 @@ def step(dy, dxl_ids, frequency=1.0, time_horizon=5.0, pos_min=0, pos_max=np.pi/
     pos_mean = (pos_max + pos_min)/2.0
     pos_scale = (pos_max - pos_min)/2.0
     
-    print("Subjecting system to step signal");
+    print("Subjecting system to step signal")
     t_s = time.time()
     t_n = time.time() - t_s
     while(t_n < time_horizon):
@@ -114,6 +114,7 @@ def step(dy, dxl_ids, frequency=1.0, time_horizon=5.0, pos_min=0, pos_max=np.pi/
         des_pos = [pos_mean + .95*pos_scale*(2.*(int(frequency*2*t_n)%2) -1.)]*np.ones(len(dxl_ids))
         dy.set_des_pos(dxl_ids, des_pos)
 
+        print(qp)
         clk.append(t_n)
         qpos.append(qp)
         qvel.append(qv)
@@ -146,25 +147,35 @@ def test_update_rate(dy, dxl_ids, cnt = 1000):
     return update_rate
 
 
+DESC = ''' 
+USAGE:
+python dynamixel_utils.py --motor_id "[6,8]" --motor_type "MX" --baudrate 1000000 --device /dev/ttyUSB0 --protocol 2
+'''
 
-DESC = ''' Pick the port to run test'''
 @click.command(help=DESC)
-@click.option('--device_name', type=str, help='pick the device number', default="/dev/ttyUSB0")
-@click.option('--dxl_id', type=int, help='motor id', default=10)
-def main(device_name, dxl_id):
+@click.option('--motor_id', '-i', type=str, help='motor ids', default="[1, 2]")
+@click.option('--motor_type', '-t', type=str, help='motor type', default="X")
+@click.option('--baudrate', '-b', type=int, help='port baud rate', default=1000000)
+@click.option('--device', '-n', type=str, help='port name', default="/dev/ttyUSB0")
+@click.option('--protocol', '-p', type=int, help='communication protocol 1/2', default=2)
+def main(motor_id, motor_type, device, baudrate, protocol):
     
     global update_rate
 
     print("============= dxl ==============")
-    dxl_ids = [dxl_id]; update_rate = 1094
+    dxl_ids =  eval(motor_id)
+    dy = dxl(motor_id=dxl_ids, motor_type=motor_type, baudrate=baudrate, devicename=device, protocol=protocol)
+
+
+    # dxl_ids = [dxl_id]; update_rate = 1094
     # dxl_ids = [10, 11, 12]; update_rate = 444
     # dxl_ids = [20, 21, 22]; update_rate = 444
     # dxl_ids = [30, 31, 32]; update_rate = 444
-    dxl_ids = [10, 11, 12, 20, 21, 22, 30, 31, 32, 50]; update_rate = 248
+    # dxl_ids = [10, 11, 12, 20, 21, 22, 30, 31, 32, 50]; update_rate = 248
     # dxl_ids = [10, 11, 12, 30, 31, 32]; update_rate = 248
 
     # Connect
-    dy = dxl(dxl_ids, DEVICENAME=device_name, PROTOCOL_VERSION=2)
+    # dy = dxl(dxl_ids, DEVICENAME=device_name, PROTOCOL_VERSION=2)
     dy.engage_motor(dxl_ids, False)
 
     # Query
@@ -175,17 +186,21 @@ def main(device_name, dxl_id):
     print(dxl_present_velocity)
 
     # Test update rate
-    # update_rate = test_update_rate(dy, dxl_ids, 200)
+    update_rate = test_update_rate(dy, dxl_ids, 200)
 
     # Move all the joints and plot the trace
     dy.engage_motor(dxl_ids, True)
-    trace = chirp(dy, dxl_ids, frequency=1.0, time_horizon=np.pi*1.0, pos_min=3.14-0.025, pos_max=3.14+.25)
+    trace = chirp(dy, dxl_ids, frequency=1.0, time_horizon=np.pi*1.0, pos_min=3.14-0.25, pos_max=3.14+.25)
     plot_paths(trace, 'chirp', qvel_lims=[-10, 10])
     sio.savemat('chirp.mat', {'trace':trace})
     
     trace = step(dy, dxl_ids, 1, 4, pos_min=3.25, pos_max=4.0)
     plot_paths(trace, 'step', qvel_lims=[-10, 10])
     sio.savemat('step.mat', {'trace':trace})
+
+    dxl_present_position, dxl_present_velocity = dy.get_pos_vel(dxl_ids)
+    print("Joint Positions ----------------")
+    print(dxl_present_position)
 
     # Close
     dy.close(dxl_ids)
