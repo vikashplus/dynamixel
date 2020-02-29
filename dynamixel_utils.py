@@ -156,7 +156,7 @@ def test_update_rate(dy, dxl_ids, cnt = 1000):
 @click.option('--motor_id', '-i', type=str, help='motor ids', default="[1, 2]")
 @click.option('--motor_type', '-t', type=str, help='motor type', default="X")
 @click.option('--baudrate', '-b', type=int, help='port baud rate', default=1000000)
-@click.option('--device', '-n', type=str, help='port name', default="/dev/ttyUSB0")
+@click.option('--device', '-d', type=str, help='device name', default="/dev/ttyUSB0")
 @click.option('--protocol', '-p', type=int, help='communication protocol 1/2', default=2)
 @click.option('--swing', '-s', type=click.FloatRange(0,3.14), help='amplitude for chirp and step in radian', default=0.25)
 def main(motor_id, motor_type, device, baudrate, protocol, swing):
@@ -165,6 +165,7 @@ def main(motor_id, motor_type, device, baudrate, protocol, swing):
     print("============= dxl ==============")
     dxl_ids =  eval(motor_id)
     dy = dxl(motor_id=dxl_ids, motor_type=motor_type, baudrate=baudrate, devicename=device, protocol=protocol)
+    dy.open_port()
     dy.engage_motor(dxl_ids, False)
 
     # Query

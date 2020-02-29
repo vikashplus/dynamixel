@@ -71,7 +71,7 @@ DXL_MOVING_STATUS_THRESHOLD = 15                            # Dynamixel moving s
 # ESC_ASCII_VALUE             = 0x1b
 
 COMM_SUCCESS                = 0                             # Communication Success result value
-# COMM_TX_FAIL                = -1001                         # Communication Tx Failed
+# COMM_TX_FAIL                = -1001                       # Communication Tx Failed
 
 
 
@@ -80,8 +80,14 @@ class dxl():
     # devicename: Port name being used on your controller # ex) Windows: "COM1"   Linux: "/dev/ttyUSB0" Mac: "/dev/tty.usbserial-*"
     def __init__(self, motor_id, motor_type="X", baudrate=1000000, devicename="/dev/ttyUSB0", protocol=2):
 
-        self.n_motors = len(motor_id)
+        
+        self.motor_id = motor_id
+        self.motor_type = motor_type
+        self.baudrate = baudrate
+        self.devicename = devicename
         self.protocol = protocol
+        self.n_motors = len(motor_id)
+
         if motor_type == "MX":
             self.motor = Dynamixel_MX()
         elif motor_type == "X":
@@ -95,41 +101,43 @@ class dxl():
 
         # Initialize PortHandler Structs
         # Set the port path and Get methods and members of PortHandlerLinux or PortHandlerWindows
-        self.port_num = dynamixel.portHandler(devicename.encode('utf-8'))
+        self.port_num = dynamixel.portHandler(self.devicename.encode('utf-8'))
 
         # Initialize PacketHandler Structs
         dynamixel.packetHandler()
 
+
+    def open_port(self):
         # Open port
         if dynamixel.openPort(self.port_num):
             print("Succeeded to open the port!")
         else:
             print("Failed to open the port")
-            os.system("sudo chmod a+rw %s"%devicename)
+            os.system("sudo chmod a+rw %s"%self.devicename)
             print("Editing permissions and trying again")
             if dynamixel.openPort(self.port_num):
                 print("Succeeded to open the port!")
             else:
-                quit("Failed to open the port! Run following command and try again.\nsudo chmod a+rw %s"%devicename)
+                quit("Failed to open the port! Run following command and try again.\nsudo chmod a+rw %s"%self.devicename)
 
         # Set port baudrate
-        if dynamixel.setBaudRate(self.port_num, baudrate):
+        if dynamixel.setBaudRate(self.port_num, self.baudrate):
             print("Succeeded to change the baudrate!")
         else:
             quit("Failed to change the baudrate!")
 
         # Enable Dynamixel Torque
-        self.engage_motor(motor_id, True)
+        self.engage_motor(self.motor_id, True)
 
         # Initialize Group instance
         
         # controls
         self.group_desPos = dynamixel.groupSyncWrite(self.port_num, self.protocol, self.motor.ADDR_GOAL_POSITION, self.motor.LEN_GOAL_POSITION)
-        self.group_desTor = dynamixel.groupSyncWrite(self.port_num, self.protocol, self.motor.ADDR_GOAL_TORQUE, self.motor.LEN_GOAL_TORQUE)
+        self.group_desTor = dynamixel.groupSyncWrite(self.port_num, self.protocol, self.motor.ADDR_GOAL_TORQUE, self.motor.LEN_GOAL_TORQUE) # NOTE: not all motors support them
 
         # positions
         self.group_pos = dynamixel.groupBulkRead(self.port_num, self.protocol)
-        for m_id in motor_id:
+        for m_id in self.motor_id:
             dxl_addparam_result = ctypes.c_ubyte(dynamixel.groupBulkReadAddParam(self.group_pos, m_id, self.motor.ADDR_PRESENT_POSITION, self.motor.LEN_PRESENT_POSITION)).value
             if dxl_addparam_result != 1:
                 print("[ID:%03d] groupBulkRead addparam_posfailed" % (m_id))
@@ -137,7 +145,7 @@ class dxl():
         
         # velocities
         self.group_vel = dynamixel.groupBulkRead(self.port_num, self.protocol)
-        for m_id in motor_id:
+        for m_id in self.motor_id:
             dxl_addparam_result = ctypes.c_ubyte(dynamixel.groupBulkReadAddParam(self.group_vel, m_id, self.motor.ADDR_PRESENT_VELOCITY, self.motor.LEN_PRESENT_VELOCITY)).value
             if dxl_addparam_result != 1:
                 print("[ID:%03d] groupBulkRead addparam_vel failed" % (m_id))
@@ -145,7 +153,7 @@ class dxl():
 
         # positions and velocities
         self.group_pos_vel = dynamixel.groupBulkRead(self.port_num, self.protocol)
-        for m_id in motor_id:
+        for m_id in self.motor_id:
             dxl_addparam_result = ctypes.c_ubyte(dynamixel.groupBulkReadAddParam(self.group_pos_vel, m_id, self.motor.ADDR_PRESENT_POS_VEL, self.motor.LEN_PRESENT_POS_VEL)).value
             if dxl_addparam_result != 1:
                 print("[ID:%03d] groupBulkRead addparam_posfailed" % (m_id))
@@ -479,6 +487,7 @@ def main(motor_id, motor_type, device, baudrate, protocol):
     
     dxl_ids =  eval(motor_id)
     dy = dxl(motor_id=dxl_ids, motor_type=motor_type, baudrate=baudrate, devicename=device, protocol=protocol)
+    dy.open_port()
 
     # Test timing ==================================
     cnt = 10
