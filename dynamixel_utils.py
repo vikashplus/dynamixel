@@ -1,13 +1,17 @@
+DESC = """
+Checks basic behaviors of the motors by subjecting them to chirp and step signals
+USAGE: 
+    python dynamixel_utils.py --motor_id "[6,8]" --motor_type "MX" --baudrate 1000000 --device /dev/ttyUSB0 --protocol 2
+"""
+
 from dynamixel_py import *
 import time as t
 import numpy as np
 import scipy.io as sio
-    
-global update_rate
-
+import click
 
 # Make pretty plots to show off your movements
-def plot_paths(paths, filename, qpos_lims=None, qvel_lims=None, ctrl_lims=None):
+def plot_paths(paths, filename, qpos_lims=None, qvel_lims=None, ctrl_lims=None, update_rate=100):
     import matplotlib as mpl
     mpl.use('TkAgg')
     import matplotlib.pyplot as plt
@@ -58,6 +62,7 @@ def plot_paths(paths, filename, qpos_lims=None, qvel_lims=None, ctrl_lims=None):
         print("path saved to " + fn)
 
 
+# subject motors to chirp
 def chirp(dy, dxl_ids, frequency=2.0, time_horizon=5.0, pos_min=0, pos_max=np.pi/2.):
     clk =[]
     qpos=[]
@@ -75,7 +80,6 @@ def chirp(dy, dxl_ids, frequency=2.0, time_horizon=5.0, pos_min=0, pos_max=np.pi
         
         qp, qv = dy.get_pos_vel(dxl_ids)
         des_pos = [pos_mean - pos_scale*np.sin(frequency*2.0*np.pi*t_n)*np.cos(frequency*2.0*t_n)]*np.ones(len(dxl_ids))
-        # print(des_pos)
         dy.set_des_pos(dxl_ids, des_pos)
 
         clk.append(t_n)
@@ -96,18 +100,17 @@ def chirp(dy, dxl_ids, frequency=2.0, time_horizon=5.0, pos_min=0, pos_max=np.pi
     return paths
 
 
-def step(dy, dxl_ids, frequency=1.0, time_horizon=5.0):
+# subject motors to step
+def step(dy, dxl_ids, frequency=1.0, time_horizon=5.0, pos_min=0, pos_max=np.pi/2):
     clk =[]
     qpos=[]
     qvel=[]
     ctrl=[]
 
-    pos_min = 0 
-    pos_max = 2.0*np.pi
     pos_mean = (pos_max + pos_min)/2.0
     pos_scale = (pos_max - pos_min)/2.0
     
-    print("Subjecting system to step signal");
+    print("Subjecting system to step signal")
     t_s = time.time()
     t_n = time.time() - t_s
     while(t_n < time_horizon):
@@ -135,10 +138,9 @@ def step(dy, dxl_ids, frequency=1.0, time_horizon=5.0):
     return paths
 
 
-
 # Test my update rate. I got good reflexes
 def test_update_rate(dy, dxl_ids, cnt = 1000):
-    print("Testing update rate of dxl")
+    print("Testing update rate of dxl -----")
     t_s = time.time()
     for i in range(cnt):
         dxl_present_position, dxl_present_velocity = dy.get_pos_vel(dxl_ids)
@@ -150,37 +152,49 @@ def test_update_rate(dy, dxl_ids, cnt = 1000):
 
 
 
-
-if __name__ == '__main__':
+@click.command(help=DESC)
+@click.option('--motor_id', '-i', type=str, help='motor ids', default="[1, 2]")
+@click.option('--motor_type', '-t', type=str, help='motor type', default="X")
+@click.option('--baudrate', '-b', type=int, help='port baud rate', default=1000000)
+@click.option('--device', '-d', type=str, help='device name', default="/dev/ttyUSB0")
+@click.option('--protocol', '-p', type=int, help='communication protocol 1/2', default=2)
+@click.option('--swing', '-s', type=click.FloatRange(0,3.14), help='amplitude for chirp and step in radian', default=0.25)
+def main(motor_id, motor_type, device, baudrate, protocol, swing):
     
-    global update_rate
-    update_rate = 444
-
-    print("============= dxl ==============")
-    # dxl_ids = [10, 11, 12]
-    # dxl_ids = [20, 21, 22]
-    # dxl_ids = [30, 31, 32]
-    dxl_ids = [10, 11, 12, 20, 21, 22, 30, 31, 32]
-
     # Connect
-    dy = dxl(dxl_ids)
+    print("============= dxl ==============")
+    dxl_ids =  eval(motor_id)
+    dy = dxl(motor_id=dxl_ids, motor_type=motor_type, baudrate=baudrate, devicename=device, protocol=protocol)
+    dy.open_port()
     dy.engage_motor(dxl_ids, False)
 
-    for i in range(10):
-        dxl_present_position, dxl_present_velocity = dy.get_pos_vel(dxl_ids)
-        print(dxl_present_position)
+    # Query
+    dxl_present_position, dxl_present_velocity = dy.get_pos_vel(dxl_ids)
+    print("Joint Positions ----------------")
+    print(dxl_present_position)
+    print("Joint Velocities ---------------")
+    print(dxl_present_velocity)
 
     # Test update rate
-    update_rate = test_update_rate(dy, dxl_ids, 1000)
+    update_rate = test_update_rate(dy, dxl_ids, 200)
 
     # Move all the joints and plot the trace
-    trace = chirp(dy, dxl_ids, frequency=1.0, ime_horizon=np.pi*2.0, pos_min=3.0, pos_max=4)
-    plot_paths(trace, 'chirp')
+    dy.engage_motor(dxl_ids, True)
+    trace = chirp(dy, dxl_ids, frequency=1.0, time_horizon=np.pi*1.0, pos_min=3.14-swing, pos_max=3.14+swing)
+    plot_paths(trace, 'chirp', qvel_lims=[-10, 10], update_rate=update_rate)
     sio.savemat('chirp.mat', {'trace':trace})
-    trace = step(dy, dxl_ids, 1, 4)
-    plot_paths(trace, 'step')
+    
+    trace = step(dy, dxl_ids, 1, 4, pos_min=3.14-swing, pos_max=3.14+swing)
+    plot_paths(trace, 'step', qvel_lims=[-10, 10], update_rate=update_rate)
     sio.savemat('step.mat', {'trace':trace})
+
+    dxl_present_position, dxl_present_velocity = dy.get_pos_vel(dxl_ids)
+    print("Joint Positions ----------------")
+    print(dxl_present_position)
 
     # Close
     dy.close(dxl_ids)
     print("Connection closed succesfully")
+
+if __name__ == '__main__':
+    main()
