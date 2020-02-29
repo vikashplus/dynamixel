@@ -35,6 +35,9 @@ sudo usermod -a -G dialout yourname
 ```
 Note that logout/login will be required for the group addition to take effect.
 
+5. Update port's latency to be minimum 
+```echo 1 > /sys/bus/usb-serial/devices/ttyUSB0/latency_timer```
+
 
 # usage
 1. Open dynamixel_utils.py and pick the connected dynamixel type 
