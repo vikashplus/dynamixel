@@ -67,10 +67,10 @@ udevadm info -a -p  $(udevadm info -q path -n /dev/ttyUSBX) | grep serial
 Now add a synlink to your udev file. The final file will look something like this
 ```
 ACTION=="add", SUBSYSTEM=="usb-serial", DRIVER=="ftdi_sio", ATTR{latency_timer}="1"
-ACTION=="add", SUBSYSTEM=="usb", ATTR{serial}=="FT3R4CCT", SYMLINK+="ttyUSB-dkitty"
-ACTION=="add", SUBSYSTEM=="usb", ATTR{serial}=="FT2H2MX4", SYMLINK+="ttyUSB-dleg"
+ACTION=="add", SUBSYSTEM=="tty", ENV{ID_MODEL_ID}=="6014", ENV{ID_VENDOR_ID}=="0403", ENV{ID_SERIAL_SHORT}=="FT3R4CCT", SYMLINK+="DKitty"
+ACTION=="add", SUBSYSTEM=="tty", ENV{ID_MODEL_ID}=="6014", ENV{ID_VENDOR_ID}=="0403", ENV{ID_SERIAL_SHORT}=="FT2H2MX4", SYMLINK+="DLeg"
 ```
-Note that logout/login will be required for the new rules to take effect.
+Note that logout/login will be required for the new rules to take effect. Alternatively one can also use `udevadm control -R`
 
 
 # usage
