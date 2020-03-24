@@ -52,10 +52,26 @@ Method 1.
  ```If you want to set it as be done automatically, and don't want to do above everytime, make rules file in /etc/udev/rules.d/. For example,
  $ echo ACTION==\"add\", SUBSYSTEM==\"usb-serial\", DRIVER==\"ftdi_sio\", ATTR{latency_timer}=\"1\" > 99-dynamixelsdk-usb.rules
  $ sudo cp ./99-dynamixelsdk-usb.rules /etc/udev/rules.d/
+ ```
+ Use commands below to reload the rules, or log-off+login for the new rules to take effect.
+ ```
  $ sudo udevadm control --reload-rules
  $ sudo udevadm trigger --action=add
  $ cat /sys/bus/usb-serial/devices/ttyUSB0/latency_timer
  ```
+
+6. Create identifiable link for your usb devices now. Check the serial of the device using
+```
+udevadm info -a -p  $(udevadm info -q path -n /dev/ttyUSBX) | grep serial
+```
+Now add a synlink to your udev file. The final file will look something like this
+```
+ACTION=="add", SUBSYSTEM=="usb-serial", DRIVER=="ftdi_sio", ATTR{latency_timer}="1"
+ACTION=="add", SUBSYSTEM=="usb", ATTR{serial}=="FT3R4CCT", SYMLINK+="ttyUSB-dkitty"
+ACTION=="add", SUBSYSTEM=="usb", ATTR{serial}=="FT2H2MX4", SYMLINK+="ttyUSB-dleg"
+```
+Note that logout/login will be required for the new rules to take effect.
+
 
 # usage
 1. Open dynamixel_utils.py and pick the connected dynamixel type 
