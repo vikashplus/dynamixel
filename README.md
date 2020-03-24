@@ -35,9 +35,27 @@ sudo usermod -a -G dialout yourname
 ```
 Note that logout/login will be required for the group addition to take effect.
 
-5. Update port's latency to be minimum 
-```echo 1 > /sys/bus/usb-serial/devices/ttyUSB0/latency_timer```
+5. Port's latency can significantly affect your performance. You can check its value by:
+ ```
+ $ cat /sys/bus/usb-serial/devices/ttyUSB0/latency_timer
+ ```
 
+ If you think that the communication is too slow, type following after plugging the usb in to change the latency timer
+
+Method 1. 
+ ```Type following (you should do this everytime when the usb once was plugged out or the connection was dropped)
+ $ echo 1 | sudo tee /sys/bus/usb-serial/devices/ttyUSB0/latency_timer
+ $ cat /sys/bus/usb-serial/devices/ttyUSB0/latency_timer
+ ```
+
+ Method 2. 
+ ```If you want to set it as be done automatically, and don't want to do above everytime, make rules file in /etc/udev/rules.d/. For example,
+ $ echo ACTION==\"add\", SUBSYSTEM==\"usb-serial\", DRIVER==\"ftdi_sio\", ATTR{latency_timer}=\"1\" > 99-dynamixelsdk-usb.rules
+ $ sudo cp ./99-dynamixelsdk-usb.rules /etc/udev/rules.d/
+ $ sudo udevadm control --reload-rules
+ $ sudo udevadm trigger --action=add
+ $ cat /sys/bus/usb-serial/devices/ttyUSB0/latency_timer
+ ```
 
 # usage
 1. Open dynamixel_utils.py and pick the connected dynamixel type 
