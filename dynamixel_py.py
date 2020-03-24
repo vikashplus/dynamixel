@@ -168,7 +168,9 @@ class dxl():
 
 
     # Cheak health
-    def okay(self, motor_id):
+    def okay(self, motor_id=None):
+        if motor_id is None:
+            motor_id = self.motor_id.copy()
         dxl_comm_result = dynamixel.getLastTxRxResult(self.port_num, self.protocol)
         dxl_error = dynamixel.getLastRxPacketError(self.port_num, self.protocol)
 
@@ -285,13 +287,16 @@ class dxl():
         # Retrieve data
         for dxl_id in motor_id:
             # Get present position value
-            dxl_getdata_result = ctypes.c_ubyte(dynamixel.groupBulkReadIsAvailable(self.group_pos, dxl_id, self.motor.ADDR_PRESENT_POSITION, self.motor.LEN_PRESENT_POSITION)).value
+            dxl_getdata_result = ctypes.c_ubyte(dynamixel.groupBulkReadIsAvailable(\
+                self.group_pos, dxl_id, self.motor.ADDR_PRESENT_POSITION, self.motor.LEN_PRESENT_POSITION)).value
             if dxl_getdata_result != 1:
                 print("[ID:%03d] groupBulkRead pos_getdata failed" % (dxl_id))
                 dxl_present_position.append(0)
                 quit()
             else:
-                dxl_present_position.append(dynamixel.groupBulkReadGetData(self.group_pos, dxl_id, self.motor.ADDR_PRESENT_POSITION, self.motor.LEN_PRESENT_POSITION))
+                dxl_present_position.append(dynamixel.groupBulkReadGetData(\
+                    self.group_pos, dxl_id, self.motor.ADDR_PRESENT_POSITION,\
+                        self.motor.LEN_PRESENT_POSITION))
 
         return POS_SCALE*np.array(dxl_present_position)
 
@@ -303,13 +308,15 @@ class dxl():
         dynamixel.groupBulkReadTxRxPacket(self.group_vel)
         for dxl_id in motor_id:
             # Get present velocity value
-            dxl_getdata_result = ctypes.c_ubyte(dynamixel.groupBulkReadIsAvailable(self.group_vel, dxl_id, self.motor.ADDR_PRESENT_VELOCITY, self.motor.LEN_PRESENT_VELOCITY)).value
+            dxl_getdata_result = ctypes.c_ubyte(dynamixel.groupBulkReadIsAvailable(\
+                self.group_vel, dxl_id, self.motor.ADDR_PRESENT_VELOCITY, self.motor.LEN_PRESENT_VELOCITY)).value
             if dxl_getdata_result != 1:
                 print("[ID:%03d] groupBulkRead vel_getdata failed" % (dxl_id))
                 dxl_present_velocity.append(0)
                 quit()
             else:
-                dxl_present_velocity.append(dynamixel.groupBulkReadGetData(self.group_vel, dxl_id, self.motor.ADDR_PRESENT_VELOCITY, self.motor.LEN_PRESENT_VELOCITY))
+                dxl_present_velocity.append(dynamixel.groupBulkReadGetData(\
+                    self.group_vel, dxl_id, self.motor.ADDR_PRESENT_VELOCITY, self.motor.LEN_PRESENT_VELOCITY))
 
         dxl_present_velocity = np.array(dxl_present_velocity)
         for i in range(len(dxl_present_velocity)):
@@ -325,7 +332,8 @@ class dxl():
         
         # Read present position and velocity
         for dxl_id in motor_id:
-            dxl_present_position.append(dynamixel.read2ByteTxRx(self.port_num, self.protocol, dxl_id, self.motor.ADDR_PRESENT_POSITION))
+            dxl_present_position.append(dynamixel.read2ByteTxRx(self.port_num,\
+                self.protocol, dxl_id, self.motor.ADDR_PRESENT_POSITION))
         if (not self.okay(motor_id)):
             self.close(motor_id)
             quit('error getting self.motor.ADDR_PRESENT_POSITION')
