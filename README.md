@@ -64,7 +64,7 @@ Method 1.
 ```
 udevadm info -a -p  $(udevadm info -q path -n /dev/ttyUSBX) | grep serial
 ```
-Now add a synlink to your udev file. The final file will look something like this
+Now add a synlink to your udev file `/etc/udev/rules.d/99-dynamixel-usb.rules`. The final file will look something like this
 ```
 ACTION=="add", SUBSYSTEM=="usb-serial", DRIVER=="ftdi_sio", ATTR{latency_timer}="1"
 ACTION=="add", SUBSYSTEM=="tty", ENV{ID_MODEL_ID}=="6014", ENV{ID_VENDOR_ID}=="0403", ENV{ID_SERIAL_SHORT}=="FT3R4CCT", SYMLINK+="DKitty"
