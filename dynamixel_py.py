@@ -59,8 +59,7 @@ DXL_MAX_CCW_TORQUE_VALUE    = 1023
 
 # Settings for MX28
 POS_SCALE = 2*np.pi/4096 #(=.088 degrees)
-VEL_SCALE = 0.11 * 2 * np.pi / 60 #(=0.11rpm)
-
+VEL_SCALE = 0.229 * 2 * np.pi / 60 #(=0.229rpm)
 
 TORQUE_ENABLE               = 1                             # Value for enabling the torque
 TORQUE_DISABLE              = 0                             # Value for disabling the torque
@@ -95,7 +94,6 @@ class dxl():
         else:
             quit("Motor type not recognized")
 
-
         # default mode 
         self.ctrl_mode = TORQUE_DISABLE
 
@@ -112,7 +110,7 @@ class dxl():
         if dynamixel.openPort(self.port_num):
             print("Succeeded to open the port!")
         else:
-            print("Failed to open the port")
+            print("Failed to open the port %s"%self.devicename)
             os.system("sudo chmod a+rw %s"%self.devicename)
             print("Editing permissions and trying again")
             if dynamixel.openPort(self.port_num):
@@ -199,11 +197,12 @@ class dxl():
             # fault handelling
             while(True):
                 dynamixel.write1ByteTxRx(self.port_num, self.protocol, dxl_id, self.motor.ADDR_TORQUE_ENABLE, enable)
-                if(self.okay(motor_id)):
+                if(self.okay([dxl_id])):
                     break
                 else:
-                    print('dxl%d: Error with ADDR_TORQUE_ENABLE. Retrying ...' %dxl_id, flush=True)
-                    time.sleep(0.25)
+                    print('dxl%d: Error with ADDR_TORQUE_ENABLE. Retrying after reboot ...' %dxl_id, flush=True)
+                    dynamixel.reboot(self.port_num, self.protocol, dxl_id)
+                    time.sleep(0.25) # Pause for reboot
 
 
     # Returns pos in radians and velocity in radian/ sec
@@ -469,13 +468,19 @@ class dxl():
 
     # Close connection
     def close(self, motor_id):
-        # Disengage Dynamixels
-        self.engage_motor(motor_id, False)
 
-        # Close port
-        dynamixel.closePort(self.port_num)
+        if self.port_num is not None:
+            # Disengage Dynamixels
+            self.engage_motor(motor_id, False)
+
+            # Close port
+            dynamixel.closePort(self.port_num)
+            self.port_num = None # mark as closed
 
         return True
+
+    def __del__(self):
+        self.close(self.motor_id)
 
 
 DESC = ''' 
