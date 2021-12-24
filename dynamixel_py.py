@@ -417,9 +417,8 @@ class dxl():
         if(self.ctrl_mode == TORQUE_DISABLE):
             for dxl_id in motor_id:
                 if isinstance(self.motor, Dynamixel_X):
-                    # dynamixel.write1ByteTxRx(self.port_num, self.protocol, dxl_id, self.motor.ADDR_OPERATION_MODE, DXL_X_POSITION_MODE)
-                    print('%d'%(dynamixel.read1ByteTxRx(self.port_num, self.protocol, dxl_id, self.motor.ADDR_OPERATION_MODE)))
-                    print('enabled here')
+                    dynamixel.write1ByteTxRx(self.port_num, self.protocol, dxl_id, self.motor.ADDR_OPERATION_MODE, DXL_X_POSITION_MODE)
+                    # print('%d'%(dynamixel.read1ByteTxRx(self.port_num, self.protocol, dxl_id, self.motor.ADDR_OPERATION_MODE)))
                 else:
                     dynamixel.write1ByteTxRx(self.port_num, self.protocol, dxl_id, self.motor.ADDR_TORQUE_CONTROL_MODE, TORQUE_ENABLE)
             if (not self.okay(motor_id)):
@@ -455,12 +454,9 @@ class dxl():
                 if isinstance(self.motor, Dynamixel_X):
                     dynamixel.write1ByteTxRx(self.port_num, self.protocol, dxl_id, self.motor.ADDR_OPERATION_MODE, DXL_X_CURRENT_MODE)
                     # print('%d'%(dynamixel.read1ByteTxRx(self.port_num, self.protocol, dxl_id, self.motor.ADDR_OPERATION_MODE)))
-                    print('enabled here')
                 else:
                     dynamixel.write1ByteTxRx(self.port_num, self.protocol, dxl_id, self.motor.ADDR_TORQUE_CONTROL_MODE, TORQUE_ENABLE)
-            print('finenab;e')
             if (not self.okay(motor_id)):
-                print('not ok')
                 self.close(motor_id)
                 quit('error enabling ADDR_TORQUE_CONTROL_MODE')
             self.ctrl_mode = TORQUE_ENABLE
