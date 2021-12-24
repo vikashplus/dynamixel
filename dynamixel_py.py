@@ -61,6 +61,9 @@ DXL_MAX_CCW_TORQUE_VALUE    = 1023
 POS_SCALE = 2*np.pi/4096 #(=.088 degrees)
 VEL_SCALE = 0.229 * 2 * np.pi / 60 #(=0.229rpm)
 
+DXL_X_CURRENT_MODE = 0                                      # Value for setting X motor to current(torque) control mode
+DXL_X_POSITION_MODE = 3                                     # Value for setting X motor to position control mode
+
 TORQUE_ENABLE               = 1                             # Value for enabling the torque
 TORQUE_DISABLE              = 0                             # Value for disabling the torque
 DXL_MINIMUM_POSITION_VALUE  = 100                           # Dynamixel will rotate between this value
@@ -408,13 +411,17 @@ class dxl():
         # Clear syncwrite parameter storage
         dynamixel.groupSyncWriteClearParam(self.group_desPos)
 
-
     # Set desired torques, only for MX64
     def set_des_torque(self, motor_id, des_tor):
         # If in position mode, activate torque mode
         if(self.ctrl_mode == TORQUE_DISABLE):
             for dxl_id in motor_id:
-                dynamixel.write1ByteTxRx(self.port_num, self.protocol, dxl_id, self.motor.ADDR_TORQUE_CONTROL_MODE, TORQUE_ENABLE)
+                if isinstance(self.motor, Dynamixel_X):
+                    # dynamixel.write1ByteTxRx(self.port_num, self.protocol, dxl_id, self.motor.ADDR_OPERATION_MODE, DXL_X_POSITION_MODE)
+                    print('%d'%(dynamixel.read1ByteTxRx(self.port_num, self.protocol, dxl_id, self.motor.ADDR_OPERATION_MODE)))
+                    print('enabled here')
+                else:
+                    dynamixel.write1ByteTxRx(self.port_num, self.protocol, dxl_id, self.motor.ADDR_TORQUE_CONTROL_MODE, TORQUE_ENABLE)
             if (not self.okay(motor_id)):
                 self.close(motor_id)
                 quit('error enabling ADDR_TORQUE_CONTROL_MODE')
@@ -444,8 +451,16 @@ class dxl():
         # If in position mode, activate torque mode
         if(self.ctrl_mode == TORQUE_DISABLE):
             for dxl_id in motor_id:
-                dynamixel.write1ByteTxRx(self.port_num, self.protocol, dxl_id, self.motor.ADDR_TORQUE_CONTROL_MODE, TORQUE_ENABLE)
+                # print(self.motor)
+                if isinstance(self.motor, Dynamixel_X):
+                    dynamixel.write1ByteTxRx(self.port_num, self.protocol, dxl_id, self.motor.ADDR_OPERATION_MODE, DXL_X_CURRENT_MODE)
+                    # print('%d'%(dynamixel.read1ByteTxRx(self.port_num, self.protocol, dxl_id, self.motor.ADDR_OPERATION_MODE)))
+                    print('enabled here')
+                else:
+                    dynamixel.write1ByteTxRx(self.port_num, self.protocol, dxl_id, self.motor.ADDR_TORQUE_CONTROL_MODE, TORQUE_ENABLE)
+            print('finenab;e')
             if (not self.okay(motor_id)):
+                print('not ok')
                 self.close(motor_id)
                 quit('error enabling ADDR_TORQUE_CONTROL_MODE')
             self.ctrl_mode = TORQUE_ENABLE
