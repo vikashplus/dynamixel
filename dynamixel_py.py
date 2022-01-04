@@ -131,7 +131,7 @@ class dxl():
         
         # Set all motors to position control
         self.torque_control(self.motor_id, enable=False)
-        
+        print('Initializing all motors to position control mode')
 
         # Enable Dynamixel Torque
         self.engage_motor(self.motor_id, True)
@@ -528,7 +528,6 @@ class dxl():
 
         # Write goal position
         for i in range(len(motor_id)):
-            print('Writing goal torque')
             dynamixel.write2ByteTxRx(self.port_num, self.protocol, motor_id[i], self.motor.ADDR_GOAL_TORQUE, int(des_tor[i]))
         if (not self.okay(motor_id)):
             self.close(motor_id)
