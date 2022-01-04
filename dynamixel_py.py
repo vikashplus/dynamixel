@@ -99,7 +99,6 @@ class dxl():
             quit("Motor type not recognized")
 
         # default mode 
-        self.motors_enabled = False
         self.ctrl_mode = TORQUE_DISABLE
 
         # Initialize PortHandler Structs
@@ -194,6 +193,18 @@ class dxl():
         else:
             return True
 
+    @property
+    def motors_enabled(self):
+        motor_id = self.motor_id.copy()
+        enable_flags = []
+        for dxl_id in motor_id:
+            enable_flags.append(
+                bool(dynamixel.read1ByteTxRx(
+                    self.port_num, self.protocol, dxl_id, self.motor.ADDR_TORQUE_ENABLE)
+            ))
+        return enable_flags
+        
+
 
     # Engage/ Disengae the motors. enable = True/ False
     def engage_motor(self, motor_id, enable):
@@ -209,20 +220,22 @@ class dxl():
                     dynamixel.reboot(self.port_num, self.protocol, dxl_id)
                     time.sleep(0.25) # Pause for reboot
         
-        self.motors_enabled = enable
-
 
     # Enable/Disable torque control. This needs to ensure that the motors are not engaged,
     # otherwise it cannot change the register value. Currently only allows all the motors
     # to be either position control or torque control. Disengages all motors when exectued.
-    def torque_control(self, enable:bool):
-        motor_id = self.motor_id.copy()
+    def torque_control(self, motor_id, enable:bool):
+        
+        motors_enabled = self.motors_enabled.copy()
+
         # Disengage all motors so register isn't locked
-        if self.motors_enabled:
-            self.engage_motor(motor_id, enable=False)
         
         for dxl_id in motor_id:
-
+            # Check if motor is engaged
+            dxl_list_id = self.motor_id.index(dxl_id)
+            enable_flag = motors_enabled[dxl_list_id]
+            if enable_flag:
+                self.engage_motor([dxl_id], enable=False)
             while(True):
                 if isinstance(self.motor, Dynamixel_X):
                     if enable:
@@ -250,10 +263,12 @@ class dxl():
                     print('dxl%d: Error with enabling torque control. Retrying after reboot ...' %dxl_id, flush=True)
                     dynamixel.reboot(self.port_num, self.protocol, dxl_id)
                     time.sleep(0.25) # Pause for reboot
-        
+            
+            # Reengage motor if previously engaged
+            if enable_flag:
+                self.engage_motor([dxl_id], enable=True)
+                
         self.ctrl_mode = enable
-        if self.motors_enabled:
-            self.engage_motor(motor_id, enable=True)
 
     # Returns pos in radians and velocity in radian/ sec
     def get_pos_vel_old(self, motor_id):
