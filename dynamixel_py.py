@@ -244,7 +244,7 @@ class dxl():
                             self.motor.ADDR_OPERATION_MODE, 
                             DXL_X_CURRENT_MODE)
                         dynamixel.write2ByteTxRx(
-                            self.port_num, self.protocol, motor_id[i], 
+                            self.port_num, self.protocol, dxl_id, 
                             self.motor.ADDR_GOAL_TORQUE, 0)
                     else:
                         dynamixel.write1ByteTxRx(
@@ -267,7 +267,7 @@ class dxl():
             # Reengage motor if previously engaged
             if enable_flag:
                 self.engage_motor([dxl_id], enable=True)
-                
+
         self.ctrl_mode = enable
 
     # Returns pos in radians and velocity in radian/ sec
@@ -557,6 +557,9 @@ class dxl():
             # Disengage Dynamixels
             self.engage_motor(motor_id, False)
 
+            # Disable torque control
+            self.torque_control(motor_id, False)
+            
             # Close port
             dynamixel.closePort(self.port_num)
             self.port_num = None # mark as closed
