@@ -385,13 +385,18 @@ class dxl():
 
         des_pos_inRadians = np.clip(des_pos_inRadians, 0.0, 2*np.pi)
         # if in torque mode, activate position control mode
+        ##### ONLY WORKS FOR MX RIGHT NOW
         if(self.ctrl_mode == TORQUE_ENABLE):
             for dxl_id in motor_id:
-                dynamixel.write1ByteTxRx(self.port_num, self.protocol, dxl_id, self.motor.ADDR_TORQUE_CONTROL_MODE, TORQUE_DISABLE)
+                if isinstance(self.motor, Dynamixel_X):
+                    dynamixel.write1ByteTxRx(self.port_num, self.protocol, dxl_id, self.motor.ADDR_OPERATION_MODE, DXL_X_POSITION_MODE)
+                else:
+                    dynamixel.write1ByteTxRx(self.port_num, self.protocol, dxl_id, self.motor.ADDR_TORQUE_CONTROL_MODE, TORQUE_DISABLE)
             if (not self.okay(motor_id)):
                 self.close(motor_id)
                 quit('error disabling self.motor.ADDR_TORQUE_CONTROL_MODE')
             self.ctrl_mode = TORQUE_DISABLE
+        #####
 
         # Write goal position
         for i in range(len(motor_id)):
@@ -411,13 +416,13 @@ class dxl():
         # Clear syncwrite parameter storage
         dynamixel.groupSyncWriteClearParam(self.group_desPos)
 
-    # Set desired torques, only for MX64
+    # Set desired torques
     def set_des_torque(self, motor_id, des_tor):
         # If in position mode, activate torque mode
         if(self.ctrl_mode == TORQUE_DISABLE):
             for dxl_id in motor_id:
                 if isinstance(self.motor, Dynamixel_X):
-                    dynamixel.write1ByteTxRx(self.port_num, self.protocol, dxl_id, self.motor.ADDR_OPERATION_MODE, DXL_X_POSITION_MODE)
+                    dynamixel.write1ByteTxRx(self.port_num, self.protocol, dxl_id, self.motor.ADDR_OPERATION_MODE, DXL_X_CURRENT_MODE)
                     # print('%d'%(dynamixel.read1ByteTxRx(self.port_num, self.protocol, dxl_id, self.motor.ADDR_OPERATION_MODE)))
                 else:
                     dynamixel.write1ByteTxRx(self.port_num, self.protocol, dxl_id, self.motor.ADDR_TORQUE_CONTROL_MODE, TORQUE_ENABLE)
@@ -445,7 +450,7 @@ class dxl():
         dynamixel.groupSyncWriteClearParam(self.group_desTor)
 
 
-    # Set desired torques, only for MX64
+    # Set desired torques
     def setIndividual_des_torque(self, motor_id, des_tor):
         # If in position mode, activate torque mode
         if(self.ctrl_mode == TORQUE_DISABLE):
