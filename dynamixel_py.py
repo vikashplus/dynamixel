@@ -99,7 +99,8 @@ class dxl():
             quit("Motor type not recognized")
 
         # default mode 
-        self.ctrl_mode = TORQUE_DISABLE
+        # self.ctrl_mode = TORQUE_DISABLE
+        self.ctrl_mode = {key: None for key in self.motor_id}
 
         # Initialize PortHandler Structs
         # Set the port path and Get methods and members of PortHandlerLinux or PortHandlerWindows
@@ -127,6 +128,10 @@ class dxl():
             print("Succeeded to change the baudrate!")
         else:
             quit("Failed to change the baudrate!")
+        
+        # Set all motors to position control
+        self.torque_control(self.motor_id, enable=False)
+        
 
         # Enable Dynamixel Torque
         self.engage_motor(self.motor_id, True)
@@ -203,8 +208,6 @@ class dxl():
                     self.port_num, self.protocol, dxl_id, self.motor.ADDR_TORQUE_ENABLE)
             ))
         return enable_flags
-        
-
 
     # Engage/ Disengae the motors. enable = True/ False
     def engage_motor(self, motor_id, enable):
@@ -231,11 +234,16 @@ class dxl():
         # Disengage all motors so register isn't locked
         
         for dxl_id in motor_id:
+            # If control mode is same as desired, skip
+            if self.ctrl_mode[dxl_id] == enable:
+                continue
+            
             # Check if motor is engaged
             dxl_list_id = self.motor_id.index(dxl_id)
             enable_flag = motors_enabled[dxl_list_id]
             if enable_flag:
                 self.engage_motor([dxl_id], enable=False)
+
             while(True):
                 if isinstance(self.motor, Dynamixel_X):
                     if enable:
@@ -264,11 +272,11 @@ class dxl():
                     dynamixel.reboot(self.port_num, self.protocol, dxl_id)
                     time.sleep(0.25) # Pause for reboot
             
+            # Toggle ctrl_mode
+            self.ctrl_mode[dxl_id] = enable
             # Reengage motor if previously engaged
             if enable_flag:
                 self.engage_motor([dxl_id], enable=True)
-
-        self.ctrl_mode = enable
 
     # Returns pos in radians and velocity in radian/ sec
     def get_pos_vel_old(self, motor_id):
@@ -426,13 +434,20 @@ class dxl():
     # Expects des_pos in radians
     def setIndividual_des_pos(self, motor_id, des_pos_inRadians):
         # if in torque mode, activate position control mode
-        if(self.ctrl_mode == TORQUE_ENABLE):
-            for dxl_id in motor_id:
-                dynamixel.write1ByteTxRx(self.port_num, self.protocol, dxl_id, self.motor.ADDR_TORQUE_CONTROL_MODE, TORQUE_DISABLE)
+        des_ctrl_mode = [self.ctrl_mode.get(mid) for mid in motor_id]
+        if any(des_ctrl_mode):
+            self.torque_control(motor_id, enable=False)
             if (not self.okay(motor_id)):
                 self.close(motor_id)
-                quit('error disabling ADDR_TORQUE_CONTROL_MODE')
-            self.ctrl_mode = TORQUE_DISABLE
+                quit('error disabling torque control mode')
+
+        # if(self.ctrl_mode == TORQUE_ENABLE):
+        #     for dxl_id in motor_id:
+        #         dynamixel.write1ByteTxRx(self.port_num, self.protocol, dxl_id, self.motor.ADDR_TORQUE_CONTROL_MODE, TORQUE_DISABLE)
+        #     if (not self.okay(motor_id)):
+        #         self.close(motor_id)
+        #         quit('error disabling ADDR_TORQUE_CONTROL_MODE')
+        #     self.ctrl_mode = TORQUE_DISABLE
 
         # Write goal position
         for i in range(len(motor_id)):
@@ -447,18 +462,12 @@ class dxl():
 
         des_pos_inRadians = np.clip(des_pos_inRadians, 0.0, 2*np.pi)
         # if in torque mode, activate position control mode
-        ##### ONLY WORKS FOR MX RIGHT NOW
-        if(self.ctrl_mode == TORQUE_ENABLE):
-            for dxl_id in motor_id:
-                if isinstance(self.motor, Dynamixel_X):
-                    dynamixel.write1ByteTxRx(self.port_num, self.protocol, dxl_id, self.motor.ADDR_OPERATION_MODE, DXL_X_POSITION_MODE)
-                else:
-                    dynamixel.write1ByteTxRx(self.port_num, self.protocol, dxl_id, self.motor.ADDR_TORQUE_CONTROL_MODE, TORQUE_DISABLE)
+        des_ctrl_mode = [self.ctrl_mode.get(mid) for mid in motor_id]
+        if any(des_ctrl_mode):
+            self.torque_control(motor_id, enable=False)
             if (not self.okay(motor_id)):
                 self.close(motor_id)
-                quit('error disabling self.motor.ADDR_TORQUE_CONTROL_MODE')
-            self.ctrl_mode = TORQUE_DISABLE
-        #####
+                quit('error disabling torque control mode')
 
         # Write goal position
         for i in range(len(motor_id)):
@@ -481,17 +490,12 @@ class dxl():
     # Set desired torques
     def set_des_torque(self, motor_id, des_tor):
         # If in position mode, activate torque mode
-        if(self.ctrl_mode == TORQUE_DISABLE):
-            for dxl_id in motor_id:
-                if isinstance(self.motor, Dynamixel_X):
-                    dynamixel.write1ByteTxRx(self.port_num, self.protocol, dxl_id, self.motor.ADDR_OPERATION_MODE, DXL_X_CURRENT_MODE)
-                    # print('%d'%(dynamixel.read1ByteTxRx(self.port_num, self.protocol, dxl_id, self.motor.ADDR_OPERATION_MODE)))
-                else:
-                    dynamixel.write1ByteTxRx(self.port_num, self.protocol, dxl_id, self.motor.ADDR_TORQUE_CONTROL_MODE, TORQUE_ENABLE)
+        des_ctrl_mode = [self.ctrl_mode.get(mid) for mid in motor_id]
+        if not all(des_ctrl_mode):
+            self.torque_control(motor_id, enable=True)
             if (not self.okay(motor_id)):
                 self.close(motor_id)
-                quit('error enabling ADDR_TORQUE_CONTROL_MODE')
-            self.ctrl_mode = TORQUE_ENABLE
+                quit('error enabling torque control mode')
 
         # Write goal position
         for i in range(len(motor_id)):
@@ -515,23 +519,12 @@ class dxl():
     # Set desired torques
     def setIndividual_des_torque(self, motor_id, des_tor):
         # If in position mode, activate torque mode
-        if(self.ctrl_mode == TORQUE_DISABLE):
-            for dxl_id in motor_id:
-                # print(self.motor)
-                if isinstance(self.motor, Dynamixel_X):
-                    print('Working check on dxl_x')
-                    # return
-                    # print(dynamixel.read1ByteTxRx(self.port_num, self.protocol, dxl_id, self.motor.ADDR_OPERATION_MODE))
-                    dynamixel.write1ByteTxRx(self.port_num, self.protocol, dxl_id, self.motor.ADDR_OPERATION_MODE, DXL_X_CURRENT_MODE)
-                    # print('%d'%(dynamixel.read1ByteTxRx(self.port_num, self.protocol, dxl_id, self.motor.ADDR_OPERATION_MODE)))
-                else:
-                    print('Not working check on dxl_x')
-                    return
-                    dynamixel.write1ByteTxRx(self.port_num, self.protocol, dxl_id, self.motor.ADDR_TORQUE_CONTROL_MODE, TORQUE_ENABLE)
+        des_ctrl_mode = [self.ctrl_mode.get(mid) for mid in motor_id]
+        if not all(des_ctrl_mode):
+            self.torque_control(motor_id, enable=True)
             if (not self.okay(motor_id)):
                 self.close(motor_id)
-                quit('error enabling ADDR_TORQUE_CONTROL_MODE')
-            self.ctrl_mode = TORQUE_ENABLE
+                quit('error enabling torque control mode')
 
         # Write goal position
         for i in range(len(motor_id)):
@@ -559,7 +552,7 @@ class dxl():
 
             # Disable torque control
             self.torque_control(motor_id, False)
-            
+
             # Close port
             dynamixel.closePort(self.port_num)
             self.port_num = None # mark as closed
