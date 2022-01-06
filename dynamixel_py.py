@@ -42,7 +42,7 @@ class Dynamixel_MX():
 
         # torque control mode options (left over from P1)
         self.ADDR_TORQUE_CONTROL_MODE = 70
-        self.ADDR_GOAL_TORQUE         = -1                            # torque mode not supported
+        self.ADDR_GOAL_TORQUE         = -1                            # torque mode not supported yet
 
         # Data Byte Length
         self.LEN_PRESENT_POSITION     = 2
