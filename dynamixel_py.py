@@ -769,15 +769,16 @@ class dxl:
                 quit("error setting self.motor.ADDR_MAX_VELOCITY")
 
     # Close connection
-    def close(self, motor_id):
+    def close(self, motor_id, torque_enabled=False):
         if not motor_id:
             motor_id = self.motor_id
         if self.port_num is not None:
-            # Disengage Dynamixels
-            self.engage_motor(motor_id, False)
+            if not torque_enabled:
+                # Disengage Dynamixels
+                self.engage_motor(motor_id, False)
 
-            # Disable torque control
-            self.torque_control(motor_id, False)
+                # Disable torque control
+                self.torque_control(motor_id, False)
 
             # Close port
             dynamixel.closePort(self.port_num)
