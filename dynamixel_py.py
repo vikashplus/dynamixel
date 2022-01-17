@@ -21,14 +21,14 @@ class Dynamixel_X:
 
         # control mode options
         self.ADDR_OPERATION_MODE = 11
-        self.ADDR_GOAL_TORQUE = 102  # Lowest byte of goal torque value
+        self.ADDR_GOAL_PWM = 100  # Lowest byte of goal torque value
 
         # Data Byte Length
         self.LEN_PRESENT_POSITION = 4
         self.LEN_PRESENT_VELOCITY = 4
         self.LEN_PRESENT_POS_VEL = 8
         self.LEN_GOAL_POSITION = 4
-        self.LEN_GOAL_TORQUE = 2
+        self.LEN_GOAL_PWM = 2
 
 
 class Dynamixel_MX:
@@ -46,14 +46,14 @@ class Dynamixel_MX:
 
         # torque control mode options (left over from P1)
         self.ADDR_TORQUE_CONTROL_MODE = 70
-        self.ADDR_GOAL_TORQUE = -1  # torque mode not supported yet
+        self.ADDR_GOAL_PWM = -1  # torque mode not supported yet
 
         # Data Byte Length
         self.LEN_PRESENT_POSITION = 2
         self.LEN_PRESENT_VELOCITY = 2
         self.LEN_PRESENT_POS_VEL = 4
         self.LEN_GOAL_POSITION = 2
-        self.LEN_GOAL_TORQUE = 2
+        self.LEN_GOAL_PWM = 2
 
 
 DXL_NULL_TORQUE_VALUE = 0
@@ -69,7 +69,10 @@ CURR_SCALE = 2.69
 
 DXL_X_CURRENT_MODE = 0  # Value for setting X motor to current(torque) control mode
 DXL_X_POSITION_MODE = 3  # Value for setting X motor to position control mode
+DXL_X_PWM_MODE = 16  # Value for setting X motor to PWM control mode. Current control doesn't quite do what you want
 DXL_X_CURRENT_LIMIT = 120  # Current limit. Normal limit is 1193, but conservative
+DXL_X_PWM_LIMIT = 500  # Current limit. Normal limit is 1193, but conservative
+
 
 TORQUE_ENABLE = 1  # Value for enabling the torque
 TORQUE_DISABLE = 0  # Value for disabling the torque
@@ -161,8 +164,8 @@ class dxl:
         self.group_desTor = dynamixel.groupSyncWrite(
             self.port_num,
             self.protocol,
-            self.motor.ADDR_GOAL_TORQUE,
-            self.motor.LEN_GOAL_TORQUE,
+            self.motor.ADDR_GOAL_PWM,
+            self.motor.LEN_GOAL_PWM,
         )  # NOTE: not all motors support them
 
         # positions
@@ -332,13 +335,13 @@ class dxl:
                             self.protocol,
                             dxl_id,
                             self.motor.ADDR_OPERATION_MODE,
-                            DXL_X_CURRENT_MODE,
+                            DXL_X_PWM_MODE,
                         )
                         dynamixel.write2ByteTxRx(
                             self.port_num,
                             self.protocol,
                             dxl_id,
-                            self.motor.ADDR_GOAL_TORQUE,
+                            self.motor.ADDR_GOAL_PWM,
                             0,
                         )
                     else:
@@ -713,7 +716,7 @@ class dxl:
                     self.group_desTor,
                     motor_id[i],
                     int(des_tor[i]),
-                    self.motor.LEN_GOAL_TORQUE,
+                    self.motor.LEN_GOAL_PWM,
                 )
             ).value
             if dxl_addparam_result != 1:
@@ -747,12 +750,12 @@ class dxl:
                 self.port_num,
                 self.protocol,
                 motor_id[i],
-                self.motor.ADDR_GOAL_TORQUE,
+                self.motor.ADDR_GOAL_PWM,
                 int(des_tor[i]),
             )
         if not self.okay(motor_id):
             self.close(motor_id)
-            quit("error setting ADDR_GOAL_TORQUE")
+            quit("error setting ADDR_GOAL_PWM")
 
     # Set maximum velocity
     def set_max_vel(self, motor_id, max_vel):
@@ -769,16 +772,15 @@ class dxl:
                 quit("error setting self.motor.ADDR_MAX_VELOCITY")
 
     # Close connection
-    def close(self, motor_id, torque_enabled=False):
+    def close(self, motor_id):
         if not motor_id:
             motor_id = self.motor_id
         if self.port_num is not None:
-            if not torque_enabled:
-                # Disengage Dynamixels
-                self.engage_motor(motor_id, False)
+            # Disengage Dynamixels
+            self.engage_motor(motor_id, False)
 
-                # Disable torque control
-                self.torque_control(motor_id, False)
+            # Disable torque control
+            self.torque_control(motor_id, False)
 
             # Close port
             dynamixel.closePort(self.port_num)
