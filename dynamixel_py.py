@@ -5,6 +5,7 @@ import numpy as np
 # os.sys.path.append('../dynamixel_functions_py')                 # Path setting
 import dynamixel_functions as dynamixel  # Uses Dynamixel SDK library
 import click
+import copy
 
 
 class Dynamixel_X:
@@ -299,9 +300,11 @@ class dxl:
 
     # Engage/ Disengae the motors. enable = True/ False
     def engage_motor(self, motor_id, enable):
-        enabled_flags = self.motors_enabled.copy()
-        for i, dxl_id in enumerate(motor_id):
-            if enabled_flags[i]:
+        enabled_flags = copy.deepcopy(self.motors_enabled)
+
+        for dxl_id in motor_id:
+            dxl_list_id = self.motor_id.index(dxl_id)
+            if enabled_flags[dxl_list_id] == enable:
                 continue
             # fault handelling
             while True:
@@ -342,8 +345,7 @@ class dxl:
     # or disengaged depending on initial state.
     def torque_control(self, motor_id, enable: bool):
 
-        motors_enabled = self.motors_enabled.copy()
-
+        motors_enabled = copy.deepcopy(self.motors_enabled)
         # Disengage all motors so register isn't locked
 
         for dxl_id in motor_id:
@@ -356,7 +358,6 @@ class dxl:
             enable_flag = motors_enabled[dxl_list_id]
             if enable_flag:
                 self.engage_motor([dxl_id], enable=False)
-
             while True:
                 if isinstance(self.motor, Dynamixel_X):
                     if enable:
