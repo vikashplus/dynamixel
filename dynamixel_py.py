@@ -149,6 +149,19 @@ class dxl:
         self.torque_control(self.motor_id, enable=False)
         print("Initializing all motors to position control mode")
 
+        # Read current operating modes and set ctrl_mode
+        for mid in self.motor_id:
+            op_mode = dynamixel.read1ByteTxRx(
+                self.port_num,
+                self.protocol,
+                mid,
+                self.motor.ADDR_TORQUE_ENABLE,
+            )
+            if op_mode == DXL_X_POSITION_MODE:
+                self.ctrl_mode[mid] = False
+            elif op_mode == DXL_X_PWM_MODE:
+                self.ctrl_mode[mid] = True
+
         # Enable Dynamixel Torque
         self.engage_motor(self.motor_id, True)
 
@@ -337,13 +350,13 @@ class dxl:
                             self.motor.ADDR_OPERATION_MODE,
                             DXL_X_PWM_MODE,
                         )
-                        dynamixel.write2ByteTxRx(
-                            self.port_num,
-                            self.protocol,
-                            dxl_id,
-                            self.motor.ADDR_GOAL_PWM,
-                            0,
-                        )
+                        # dynamixel.write2ByteTxRx(
+                        #     self.port_num,
+                        #     self.protocol,
+                        #     dxl_id,
+                        #     self.motor.ADDR_GOAL_PWM,
+                        #     0,
+                        # )
                     else:
                         dynamixel.write1ByteTxRx(
                             self.port_num,
