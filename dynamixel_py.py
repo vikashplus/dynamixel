@@ -307,9 +307,23 @@ class dxl:
                     dynamixel.reboot(self.port_num, self.protocol, dxl_id)
                     time.sleep(0.25)  # Pause for reboot
 
-    # Enable/Disable torque control. This needs to ensure that the motors are not engaged,
-    # otherwise it cannot change the register value. Currently only allows all the motors
-    # to be either position control or torque control. Disengages all motors when exectued.
+    def _set_register(self, dxl_id: int, address: int, size: int, value: int):
+        if size == 1:
+            dynamixel.write1ByteTxRx(
+                self.port_num, self.protocol, dxl_id, address, value
+            )
+        elif size == 2:
+            dynamixel.write2ByteTxRx(
+                self.port_num, self.protocol, dxl_id, address, value
+            )
+        elif size == 4:
+            dynamixel.write4ByteTxRx(
+                self.port_num, self.protocol, dxl_id, address, value
+            )
+
+    # Enable/Disable torque control. Currently only allows all the motors
+    # to be either position control or torque control. Leaves motors engaged
+    # or disengaged depending on initial state.
     def torque_control(self, motor_id, enable: bool):
 
         motors_enabled = self.motors_enabled.copy()
