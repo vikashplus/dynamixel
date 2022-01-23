@@ -146,11 +146,12 @@ class dxl:
             quit("Failed to change the baudrate!")
 
         # Set all motors to position control
-        self.torque_control(self.motor_id, enable=False)
-        print("Initializing all motors to position control mode")
+        # self.torque_control(self.motor_id, enable=False)
+        # print("Initializing all motors to position control mode")
 
         # Read current operating modes and set ctrl_mode
         # for mid in self.motor_id:
+        #     self.engage_motor([mid], False)
         #     op_mode = dynamixel.read1ByteTxRx(
         #         self.port_num,
         #         self.protocol,
