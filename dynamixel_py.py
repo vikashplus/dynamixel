@@ -150,17 +150,17 @@ class dxl:
         print("Initializing all motors to position control mode")
 
         # Read current operating modes and set ctrl_mode
-        for mid in self.motor_id:
-            op_mode = dynamixel.read1ByteTxRx(
-                self.port_num,
-                self.protocol,
-                mid,
-                self.motor.ADDR_TORQUE_ENABLE,
-            )
-            if op_mode == DXL_X_POSITION_MODE:
-                self.ctrl_mode[mid] = False
-            elif op_mode == DXL_X_PWM_MODE:
-                self.ctrl_mode[mid] = True
+        # for mid in self.motor_id:
+        #     op_mode = dynamixel.read1ByteTxRx(
+        #         self.port_num,
+        #         self.protocol,
+        #         mid,
+        #         self.motor.ADDR_TORQUE_ENABLE,
+        #     )
+        #     if op_mode == DXL_X_POSITION_MODE:
+        #         self.ctrl_mode[mid] = False
+        #     elif op_mode == DXL_X_PWM_MODE:
+        #         self.ctrl_mode[mid] = True
 
         # Enable Dynamixel Torque
         self.engage_motor(self.motor_id, True)
@@ -298,7 +298,7 @@ class dxl:
 
     # Engage/ Disengae the motors. enable = True/ False
     def engage_motor(self, motor_id, enable):
-        enabled_flags = self.motors_enabled
+        enabled_flags = self.motors_enabled.copy()
         for i, dxl_id in enumerate(motor_id):
             if enabled_flags[i]:
                 continue
