@@ -299,8 +299,8 @@ class dxl:
     # Engage/ Disengae the motors. enable = True/ False
     def engage_motor(self, motor_id, enable):
         enabled_flags = self.motors_enabled
-        for dxl_id in motor_id:
-            if enabled_flags[dxl_id]:
+        for i, dxl_id in enumerate(motor_id):
+            if enabled_flags[i]:
                 continue
             # fault handelling
             while True:
